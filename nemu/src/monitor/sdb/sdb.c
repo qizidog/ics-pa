@@ -17,6 +17,8 @@
 #include <cpu/cpu.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include "memory/paddr.h"
+#include "memory/vaddr.h"
 #include "sdb.h"
 
 static int is_batch_mode = false;
@@ -49,7 +51,106 @@ static int cmd_c(char *args) {
 
 
 static int cmd_q(char *args) {
+  nemu_state.state = NEMU_QUIT;
   return -1;
+}
+
+static int cmd_si(char *args) {
+  char* arg;
+  if (args == NULL || (arg = strtok(NULL, " ")) == NULL) {
+    cpu_exec(1);
+    return 0;
+  }
+
+  int64_t nstep;
+  int ret = sscanf(arg, "%ld", &nstep);
+  if (ret != 1 || (arg = strtok(NULL, " ")) != NULL) {
+    printf("A syntax error in expression, near `%s`.\n", arg);
+    return 1;
+  }
+
+  cpu_exec(nstep > 0 ? nstep : 0);
+  return 0;
+}
+
+static int cmd_info(char *args) {
+  char *scmd = strtok(NULL, " ");
+
+  if (scmd == NULL) {
+    printf("List of info subcommands:\n");
+    printf("\tinfo r --  List of integer registers and their contents, for selected stack frame.\n");
+    printf("\tinfo w --  Status of specified watchpoints (all watchpoints if no argument).\n");
+  } else if (!strcmp(scmd, "r")) {
+    isa_reg_display();
+  } else if (!strcmp(scmd, "w")) {
+    // TODO: info watch
+    printf("Watch\n");
+  } else {
+    printf("Undefined info command: \"%s\".\n", scmd);
+  }
+
+  return 0;
+}
+
+static int cmd_x(char *args) {
+  int32_t arg1;
+  uint32_t arg2;
+  char *token;
+
+  if ((token = strtok(NULL, " ")) == NULL || 
+      sscanf(token, "%d", &arg1) != 1) {
+    printf("A syntax error in expression, near `%s`.\n", token);
+    return 1;
+  }
+  if ((token = strtok(NULL, " ")) == NULL ||
+      sscanf(token, "0x%x", &arg2) != 1 ||
+      (token = strtok(NULL, " ")) != NULL) {
+    printf("A syntax error in expression, near `%s`, please prefix memory address with '0x'.\n", token);
+    return 1;
+  }
+
+  const int step = 4;
+  uint32_t pp, p_end;
+  if (arg1 < 0) {
+    pp = arg2 + step * arg1;
+    p_end = arg2;
+  } else {
+    pp = arg2;
+    p_end = arg2 + step * arg1;
+  }
+  // out of bound detection
+  if (pp < PMEM_LEFT || pp >= PMEM_RIGHT+1) {
+    printf("address = " FMT_PADDR " is out of bound of pmem [" FMT_PADDR ", " FMT_PADDR "]\n",
+      pp, PMEM_LEFT, PMEM_RIGHT);
+    return 1;
+  } else if (p_end > PMEM_RIGHT+1 || p_end < PMEM_LEFT) {
+    printf("address = " FMT_PADDR " is out of bound of pmem [" FMT_PADDR ", " FMT_PADDR "]\n",
+      p_end, PMEM_LEFT, PMEM_RIGHT);
+    return 1;
+  }
+
+  while (pp < p_end) {
+    printf(ANSI_FMT(FMT_PADDR, ANSI_FG_BLUE) ": ", pp);
+
+    for (int i = 0; i < 4 && pp < p_end; i++, pp+=step) {
+      uint32_t m = vaddr_read(pp, step);
+      printf("\t" FMT_PADDR, m);
+    }
+    printf("\n");
+  }
+  return 0;
+}
+
+static int cmd_p(char *args) {
+  return 0;
+}
+
+static int cmd_w(char *args) {
+  return 0;
+}
+
+static int cmd_d(char *args) {
+  return 0;
 }
 
 static int cmd_help(char *args);
@@ -62,9 +163,12 @@ static struct {
   { "help", "Display information about all supported commands", cmd_help },
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
-
-  /* TODO: Add more commands */
-
+  { "si", "Step [N] instruction", cmd_si },
+  { "info", "Info subcmd ('r' for register, 'w' for watchpoint)", cmd_info },
+  { "x", "Scan memory and print", cmd_x },
+  { "p", "Calculate the value of expressions", cmd_p },
+  { "w", "Set watchpoint", cmd_w },
+  { "d", "Unset watchpoint", cmd_d },
 };
 
 #define NR_CMD ARRLEN(cmd_table)

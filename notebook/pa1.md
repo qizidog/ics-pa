@@ -211,6 +211,16 @@ destructor则相反，优先级数值越小，运行越晚（优先级 0 到 100
 - `return`: 调用时进行stack unwinding，调用局部对象析构函数清理局部对象。如果在main中，则之后再交由系统调用exit()
 - `abort`: 调用时不进行任何清理工作，直接终止程序，并产生 `SIGABRT` 信号。
 
+
+### pmem映射
+
+nemu中用pmem来代表内存，访问内存时涉及到 paddr_read/write 和 vaddr_read/write 两组函数，两者一个代表物理地址，一个代表虚拟地址，其中vaddr仅仅是paddr多一层的封装。
+
+除了逻辑层面的区别以外，暂时看不出单独封装一层vaddr有什么特别的意义，也许以后会找到答案。
+
+
+## 基础设施
+
 ### 字符串转数字
 
 ```c
@@ -222,7 +232,8 @@ atoi, atol, atoll  // 是上面一行的简化版
 scanf, sscanf  // 可以理解为是逆向版的printf
 
 #include <string.h>
-strtok  // 原地切分字符串的方法
+strtok  // 原地切分字符串，会把当前tocken后面的一个字符用`\0`替换
+strtok_r  // 线程安全版strtok，需要单独传入一个指针用来维护切分位置
 
 #include <errno.h>
 // 定义常用的错误api，比如errno、perror
@@ -230,7 +241,24 @@ strtok  // 原地切分字符串的方法
 
 [char * 与char []区别总结](https://blog.csdn.net/bitcarmanlee/article/details/124166842)，简而言之就是，一个是常量指针，一个是指针常量。
 
-完成 `printf` 格式输出RTFM。
+在做 `基础设施` 章节的时候会用到很多字符串处理的函数，其中以 strtok 和 scanf 为主，在选择这两个函数时总是很纠结，
+strtok 能够处理空字符串，scanf 必须提前过滤掉空字符串。如果不太考虑性能的话，其实先用 strtok 获取tocken，然后用scanf解析tocken逻辑会更清晰。
+
+
+### si / info r / x
+
+实现这些基础设施时需要充分考虑非法输入：
+
+- 应该用哪种整数类型来接收 si/x 指令的步长？用word_t、int、unsign int、uint32_t、int64_t还是uint64_t？
+- 如果步长传入非字符如何应对？
+- 如果步长传入负数应该如何响应？参考一下gdb中x指令对负数步长的处理。
+- 如果接收到类似 `x 5 0x80000004  abcd` 的指令应该如何应对？（额外做一次strtok）
+
+响应内容需要友好，printf格式化字符串少不了要RTFM了。其实nemu已经内置了一些非常好用的格式化字符串宏，比如 `FMT_PADDR`, `PMEM_LEFT`, 甚至还可以方便的输出带颜色的字符！比如，`ANSI_FMT(FMT_PADDR, ANSI_FG_BLUE)`，RTFSC！
+
+> NEMU默认会把单步执行的指令打印出来(这里面埋了一些坑, 你需要RTFSC看看指令是在哪里被打印的), 这样你就可以验证单步执行的效果了.
+
+2021版pa在这里的坑应该是指si单步执行指令时打印的内存数据没有考虑小端序，但是2022版的pa好像把这个坑取消掉了，暂时没有发现其他坑。
 
 
 
