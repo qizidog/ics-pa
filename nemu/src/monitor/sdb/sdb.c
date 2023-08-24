@@ -142,7 +142,13 @@ static int cmd_x(char *args) {
 }
 
 static int cmd_p(char *args) {
-  return 0;
+  if (args == NULL) return 1;
+
+  bool success;
+  uint32_t r = expr(args, &success);
+  if (success) printf("%d\n", r);
+
+  return !success;
 }
 
 static int cmd_w(char *args) {
