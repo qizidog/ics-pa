@@ -15,4 +15,15 @@
 
 NAME = gen-expr
 SRCS = gen-expr.c
+CFLAGS_BUILD += -Og -ggdb3
+CFLAGS  += $(CFLAGS_BUILD)
 include $(NEMU_HOME)/scripts/build.mk
+
+override ARGS ?= 10
+EXPR_EXEC := $(BINARY) $(ARGS)
+
+expr: $(BINARY)
+	$(EXPR_EXEC) > $(BUILD_DIR)/input
+
+expr-gdb: $(BINARY)
+	gdb -s $(BINARY) --args $(EXPR_EXEC)

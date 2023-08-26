@@ -22,6 +22,7 @@
 #include "sdb.h"
 
 static int is_batch_mode = false;
+static int is_test_expr = false;
 
 void init_regex();
 void init_wp_pool();
@@ -206,9 +207,63 @@ void sdb_set_batch_mode() {
   is_batch_mode = true;
 }
 
+void sdb_set_test_expr() {
+  is_test_expr = true;
+}
+
+static void test_expr() {
+  char *nemu_home = getenv("NEMU_HOME");
+  if (nemu_home == NULL) {
+    printf("ERROR: `$NEMU_HOME` is not set!\n");
+    return;
+  }
+  Assert(strlen(nemu_home)<480, "too long value of $NEMU_HOME: %lu\n", strlen(nemu_home));
+  char f_input[512];
+  strcat(strcat(f_input, nemu_home), "/tools/gen-expr/build/input");
+
+  FILE *fp = fopen(f_input, "r");
+  if (fp == NULL) {
+    printf("Failed to open file: %s.\n", f_input);
+    return;
+  }
+
+  bool success;
+  char buf[65536 + 128];
+
+  while (fgets(buf, sizeof(buf), fp) != NULL) {
+    char *e;
+    uint32_t rt_real;
+
+    sscanf(e = (strtok(buf, " ")), "%u", &rt_real);
+    e = buf + strlen(e) + 1;
+
+    if (e[strlen(e)-1] == '\n') {
+      e[strlen(e)-1] = '\0';  // 使用strcspn函数找到第一个'\n'的位置，然后将其替换为字符串结束符'\0'
+    }
+
+    uint32_t rt = expr(e, &success);
+
+    if (!success || rt != rt_real) {
+      printf(
+        ANSI_FMT("Expression evaluate failed.\n"
+                 "get\treal\texpression\n" "%u\t%u\t%s",
+                 ANSI_FG_RED)"\n",
+        rt, rt_real, e
+      );
+      assert(0);
+    }
+  }
+
+  printf("All test cases have passed, Congratuation!\n");
+  nemu_state.state = NEMU_END;
+}
+
 void sdb_mainloop() {
   if (is_batch_mode) {
     cmd_c(NULL);
+    return;
+  } else if (is_test_expr) {
+    test_expr();
     return;
   }
 

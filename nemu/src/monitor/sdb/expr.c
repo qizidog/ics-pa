@@ -46,7 +46,7 @@ static struct rule {
   {"\\(", '('},      // left bracket
   {"\\)", ')'},      // right bracket
   {"==", TK_EQ},     // equal
-  {"[0-9]+", TK_NUM},// number
+  {"[0-9]+[uU]?", TK_NUM},// number
 };
 
 #define NR_REGEX ARRLEN(rules)
@@ -75,7 +75,9 @@ typedef struct token {
   char str[32];
 } Token;
 
-static Token tokens[32] __attribute__((used)) = {}; // tokens recognized
+// #define TOKEN_SIZE 1024  // use 1024 for test
+#define TOKEN_SIZE 32
+static Token tokens[TOKEN_SIZE] __attribute__((used)) = {}; // tokens recognized
 static int nr_token __attribute__((used)) = 0; // number of token recognized
 
 static bool make_token(char *e) {
@@ -113,7 +115,7 @@ static bool make_token(char *e) {
           // no break
         default:
           t.type = rules[i].token_type;
-          Assert(nr_token < 32, "nr_token: %d", nr_token);
+          Assert(nr_token < TOKEN_SIZE, "nr_token overflow, expression: %s\n", e);
           tokens[nr_token++] = t;
           break;
         }
@@ -136,7 +138,6 @@ static uint32_t err_tk = -1;
 
 static bool check_parentheses(uint32_t l, uint32_t r) {
   int sz_s = r - l + 1;
-  /* if ((sz_s = r - l + 1) == 2 || tokens[l].type != '(' || tokens[r].type != ')') return false; */
   bool quick = tokens[l].type == '(' && tokens[r].type == ')';
 
   int nr_p = 0;  // parentheses number in stack
@@ -161,7 +162,6 @@ static uint32_t eval(uint32_t l, uint32_t r) {
   if (err_eval) goto err;
 
   uint32_t ret;
-  /* assert(l <= r); */
   if (l == r) {
     if (tokens[l].type != TK_NUM || sscanf(tokens[l].str, "%u", &ret) != 1) {
       err_tk = l < nr_token ? l : nr_token-1;
