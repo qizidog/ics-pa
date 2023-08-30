@@ -146,8 +146,21 @@ static int cmd_p(char *args) {
   if (args == NULL) return 1;
 
   bool success;
-  uint32_t r = expr(args, &success);
-  if (success) printf("%d\n", r);
+  uint32_t r;
+  if (strncmp(args, "/", 1) != 0) {
+    r = expr(args, &success);
+    if (success) printf("%d\n", r);
+    return !success;
+  }
+
+  char *fmt = strtok(NULL, " ");
+  if (strcmp(fmt, "/x")==0) {
+    r = expr(args + strlen(fmt) + 1, &success);
+    if (success) printf("%#x\n", r);
+  } else {
+    success = false;
+    printf("Error format parameter `%s`.\n", fmt);
+  }
 
   return !success;
 }
