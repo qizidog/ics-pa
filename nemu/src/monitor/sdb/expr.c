@@ -347,7 +347,7 @@ static uint32_t eval() {
           oped1 = pop_stack(&num_stack);
           push_stack(&num_stack, calc(op, oped1, oped2));
         }
-        if (num_stack.err || op_stack.err) goto err_handler;
+        if (num_stack.err || op_stack.err) goto err_info;
       }
     } else if (op_stack.top < 0 || top_stack(&op_stack) == TK_LBKT || cmp_prece(tk.type, top_stack(&op_stack)) > 0
       || (cmp_prece(tk.type, top_stack(&op_stack)) == 0 && is_r_associ(tk.type))) {
@@ -369,7 +369,7 @@ static uint32_t eval() {
           oped1 = pop_stack(&num_stack);
           push_stack(&num_stack, calc(op, oped1, oped2));
         }
-        if (num_stack.err || op_stack.err) goto err_handler;
+        if (num_stack.err || op_stack.err) goto err_info;
       }
       push_stack(&op_stack, tk.type);
     }
@@ -379,7 +379,7 @@ static uint32_t eval() {
   while (op_stack.top >= 0) {
     op = pop_stack(&op_stack);
     if (op == TK_LBKT) {
-      goto err_handler;
+      goto err_info;
     }
     if (is_unary(op)) {
       oped1 = pop_stack(&num_stack);
@@ -389,13 +389,15 @@ static uint32_t eval() {
       oped1 = pop_stack(&num_stack);
       push_stack(&num_stack, calc(op, oped1, oped2));
     }
-    if (num_stack.err || op_stack.err) goto err_handler;
+    if (num_stack.err || op_stack.err) goto err_info;
   }
+  if (num_stack.top < 0) goto err_handler;
   return top_stack(&num_stack);
 
+err_info:
+  printf("Syntax error in expression.\n");
 err_handler:
   err_eval = true;
-  printf("Syntax error in expression.\n");
   return -1;
 }
 

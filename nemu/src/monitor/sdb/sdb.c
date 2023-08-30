@@ -84,8 +84,7 @@ static int cmd_info(char *args) {
   } else if (!strcmp(scmd, "r")) {
     isa_reg_display();
   } else if (!strcmp(scmd, "w")) {
-    // TODO: info watch
-    printf("Watch\n");
+    info_watchpoints();
   } else {
     printf("Undefined info command: \"%s\".\n", scmd);
   }
@@ -166,10 +165,14 @@ static int cmd_p(char *args) {
 }
 
 static int cmd_w(char *args) {
+  if (args == NULL) return 1;
+  new_wp(args);
   return 0;
 }
 
 static int cmd_d(char *args) {
+  if (args == NULL) return 1;
+  free_wp(atoi(args));
   return 0;
 }
 
@@ -188,7 +191,7 @@ static struct {
   { "x", "Scan memory and print", cmd_x },
   { "p", "Calculate the value of expressions", cmd_p },
   { "w", "Set watchpoint", cmd_w },
-  { "d", "Unset watchpoint", cmd_d },
+  { "d", "Delete watchpoint", cmd_d },
 };
 
 #define NR_CMD ARRLEN(cmd_table)

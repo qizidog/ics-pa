@@ -20,4 +20,8 @@
 
 word_t expr(char *e, bool *success);
 
+bool new_wp(char * e);
+void free_wp(uint32_t wp_id);
+void info_watchpoints();
+
 #endif
