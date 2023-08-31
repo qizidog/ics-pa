@@ -342,4 +342,87 @@ easy, pass.
 
 个人感想是，必须要有专门的方法用来确定操作符的优先级以及结合性，只要这两者被确定下来，无论是基于栈，还是基于BNF的方法，应该都是比较好实现的。
 
+### 段错误
+
+- Fault: 实现错误的代码, 例如if (p = NULL)
+- Error: 程序执行时不符合预期的状态, 例如p被错误地赋值成NULL
+- Failure: 能直接观测到的错误, 例如程序触发了段错误
+
+调试其实就是从观测到的failure一步一步回溯寻找fault的过程, 找到了fault之后, 我们就很快知道应该如何修改错误的代码了.
+
+segmentation fault 报错的产生原因：访问不存在的内存地址、访问系统保护的内存地址 、访问只读的内存地址、空指针废弃（eg:malloc与free释放后，继续使用）、堆栈溢出、内存越界（数组越界，变量类型不一致等）
+
+**构造一个简单的段错误**
+
+```c
+#include <stdio.h>
+#include <string.h>
+
+int main(void) {
+  char * str = "world";
+  strcpy(str, "hello");
+}
+```
+
+```bash
+$ gcc tmp.c -o tmp && ./tmp
+[1]    877167 segmentation fault (core dumped)  ./tmp
+```
+
+**排查方法一**
+
+默认发生段错误后不会显示出错的位置，可以启用gcc的 `-rdynamic` 参数帮助排查段错误。
+
+**排查方法二**
+
+充分理解"核心转储 / core dumped"这个词，其实说的就是指生成coredump file，coredump file是程序运行状态的内存映象，如果生成则默认是在可执行文件的同一目录下，默认情况下一般是不会生成的（`ulimit -c` 查看允许生成core文件的大小）。
+
+```bash
+ulimit -c 1000  # 设置生成core文件最多1000 Byte
+ulimit -c unlimited  # 设置不限制生成core文件的大小
+```
+简单实用core file
+
+```bash
+gdb -c <core file>
+# 进入之后执行 `where` 就能看到程序是在哪里宕掉的
+```
+
+**其他排查方法**
+
+也可以利用backtrace和objdump工具来排查问题。
+
+**认识sanitize**
+
+`man gcc` 查找 `-fsanitize` 相关的文档。
+
+**调试器/断点实现原理**
+
+- [how-debuggers-work-part-1](https://eli.thegreenplace.net/2011/01/23/how-debuggers-work-part-1/)
+- [how-debuggers-work-part-2-breakpoints](https://eli.thegreenplace.net/2011/01/27/how-debuggers-work-part-2-breakpoints)
+- [how-debuggers-work-part-3-debugging-information](https://eli.thegreenplace.net/2011/02/07/how-debuggers-work-part-3-debugging-information)
+## pa1结束之前
+
+### 阅读riscv32手册
+
+- riscv32有哪几种指令格式?
+- LUI指令的行为是什么?
+- mstatus寄存器的结构是怎么样的?
+
+### 代码统计
+
+如果只是统计所有文件的修改数量，直接只用 `git diff pa0 --numstat` 即可。git diff 还有一个 `-X` 参数可以了解一下。
+
+如果需要统计仅 .c, .h 文件：
+
+```bash
+# nemu/目录下的所有.c和.h和文件总共有多少行代码? 
+cat $(find $NEMU_HOME -name "*.c" -o -name "*.h") | wc -l
+# 除去空行之外, nemu/目录下的所有.c和.h文件总共有多少行代码?
+cat $(find $NEMU_HOME -name "*.c" -o -name "*.h") | grep -v '^$' | wc -l
+# 你在PA1中编写了多少行代码?
+git diff pa0 -- $(find $NEMU_HOME -name "*.c" -o -name "*.h") | grep -E '^(\+|\-)' | grep -vE '^(\-{3}|\+{3})' | wc -l
+# GNU 的 grep 工具不支持 `(?!expr)` 负向预查表达式，这里只好过滤两次
+```
+
 
