@@ -221,7 +221,54 @@ nemu中用pmem来代表内存，访问内存时涉及到 paddr_read/write 和 va
 
 ### 宏工具
 
+```c
+#define concat_temp(x, y) x ## y
+#define concat(x, y) concat_temp(x, y)
 
+#define CHOOSE2nd(a, b, ...) b
+#define MUX_WITH_COMMA(contain_comma, a, b) CHOOSE2nd(contain_comma a, b)
+#define MUX_MACRO_PROPERTY(p, macro, a, b) MUX_WITH_COMMA(concat(p, macro), a, b)
+
+#define __P_DEF_0  X,
+#define __P_DEF_1  X,
+
+#define MUXDEF(macro, X, Y)  MUX_MACRO_PROPERTY(__P_DEF_, macro, X, Y)
+
+#define __IGNORE(...)
+#define __KEEP(...) __VA_ARGS__
+#define IFDEF(macro, ...) MUXDEF(macro, __KEEP, __IGNORE)(__VA_ARGS__)
+```
+
+手动呈现ISDEF宏的展开过程：
+
+```c
+IFDEF(CONFIG_DEVICE, init_device());
+
+// if CONFIG_DEViCE is defined
+IFDEF(1, init_device());
+MUXDEF(1, __KEEP, __IGNORE)(init_device());
+MUX_MACRO_PROPERTY(__P_DEF_, 1, __KEEP, __IGNORE)(init_device());
+MUX_WITH_COMMA(concat(__P_DEF_, 1), __KEEP, __IGNORE)(init_device());
+MUX_WITH_COMMA(concat_temp(__P_DEF_, 1), __KEEP, __IGNORE)(init_device());
+MUX_WITH_COMMA(__P_DEF_1, __KEEP, __IGNORE)(init_device());
+MUX_WITH_COMMA(X,, __KEEP, __IGNORE)(init_device());
+CHOOSE2nd(X, __KEEP, __IGNORE)(init_device());
+__KEEP(init_device());
+init_device();
+
+// if CONFIG_DEViCE is not defined
+IFDEF(, init_device());
+MUXDEF(, __KEEP, __IGNORE)(init_device());
+MUX_MACRO_PROPERTY(__P_DEF_, , __KEEP, __IGNORE)(init_device());
+MUX_WITH_COMMA(concat(__P_DEF_, ), __KEEP, __IGNORE)(init_device());
+MUX_WITH_COMMA(concat_temp(__P_DEF_, ), __KEEP, __IGNORE)(init_device());
+MUX_WITH_COMMA(__P_DEF_, __KEEP, __IGNORE)(init_device());
+CHOOSE2nd(__P_DEF_ __KEEP, __IGNORE)(init_device());
+__IGNORE(init_device());
+;
+```
+
+妙在 `#define __P_DEF_1 X,` ，`X` 只是一个占位符，改用其他符号也没有影响，需要注意的是 `X` 后面的逗号，如果成功宏替换得到了 `__P_DEF_1`，就相当于增加了一个空的参数，用来充当 `MUX_WITH_COMMA` 第二个参数的替死鬼。
 
 
 ## 基础设施
@@ -401,6 +448,13 @@ gdb -c <core file>
 - [how-debuggers-work-part-1](https://eli.thegreenplace.net/2011/01/23/how-debuggers-work-part-1/)
 - [how-debuggers-work-part-2-breakpoints](https://eli.thegreenplace.net/2011/01/27/how-debuggers-work-part-2-breakpoints)
 - [how-debuggers-work-part-3-debugging-information](https://eli.thegreenplace.net/2011/02/07/how-debuggers-work-part-3-debugging-information)
+
+硬着头皮啃完了part1和part2，简单记两笔，
+
+1. 通过 `ptrace` 系统调用可以控制子进程，当子进程发出信号时，控制权交由父进程接管，父进程可以修改子进程的进程信息，比如修改内存单元内容、修改EIP地址等。
+2. 调试器可以通过 `ptrace` 实现单步调试功能。
+3. 断点的实现原理在于注入回调，通过 `ptrace` 用 int 3（单字节）系统调用替换（并记录）需要设置断点处的第一条指令，当触发断点时，修正子进程EIP指示地址、换回原始待执行指令。
+
 ## pa1结束之前
 
 ### 阅读riscv32手册
