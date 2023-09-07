@@ -24,8 +24,21 @@ const char *regs[] = {
 };
 
 void isa_reg_display() {
+  const char* pattern = "%-4s\t%-#10x\n";
+  for (int i = 0; i < ARRLEN(regs); i++) {
+    printf(pattern, regs[i], gpr(i));
+  }
+  printf(pattern, "ps", cpu.pc);
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
-  return 0;
+  for (int i = 0; i < ARRLEN(regs); i++) {
+    if (strcmp(s+1, regs[i]) == 0) {
+      *success = true;
+      return gpr(i);
+    }
+  }
+  *success = false;
+  printf("No register named `%s`.\n", s);
+  return -1;
 }
