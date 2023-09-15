@@ -207,4 +207,17 @@ Disassembly of section .text:
 80000034:       0000006f                jal     zero,80000034 <_trm_init+0x1c>
 ```
 
+### shift operators
+
+在实现 `srl`, `sra` 指令的时候意识到一个问题，在c语言中做 `a >> b` 右移操作时，如果a是有符号数，b是无符号数，是默认进行整数提升将a变为无符号数（0拓展），还是会进行符号位拓展呢？
+
+查了一下C语言的手册，
+
+> First, integer promotions are performed, individually, on each operand (Note: this is unlike other binary arithmetic operators, which all perform usual arithmetic conversions). **The type of the result is the type of lhs after promotion**.
+
+> **For unsigned lhs and for signed lhs with nonnegative values**, the value of LHS >> RHS is the integer part of LHS / 2^RHS
+. **For negative LHS**, the value of LHS >> RHS is *implementation-defined* where in most implementations, this performs arithmetic right shift (so that the result remains negative). Thus in most implementations, right shifting a signed LHS fills the new higher-order bits with the original sign bit (i.e. with 0 if it was non-negative and 1 if it was negative).
+
+因此，右移操作的结果类型仅取决于 lhs 操作数。
+
 
