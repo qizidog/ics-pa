@@ -28,7 +28,7 @@ void isa_reg_display() {
   for (int i = 0; i < ARRLEN(regs); i++) {
     printf(pattern, regs[i], gpr(i));
   }
-  printf(pattern, "ps", cpu.pc);
+  printf(pattern, "pc", cpu.pc);
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
@@ -37,6 +37,10 @@ word_t isa_reg_str2val(const char *s, bool *success) {
       *success = true;
       return gpr(i);
     }
+  }
+  if (strcmp(s+1, "pc") == 0) {
+    *success = true;
+    return cpu.pc;
   }
   *success = false;
   printf("No register named `%s`.\n", s);
