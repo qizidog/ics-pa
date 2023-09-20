@@ -84,7 +84,10 @@ readelf -a : Equivalent to specifying -h, -l, -S, -s, -r, -d, -n, -V, -A, -u, -g
         -u, --unwind
         -g, --section-groups
         -I, --histogram
+        -x, --hex-dump <number or name>
 ```
+
+`-x` 用来查看特定 section 的具体内容，相当于 `objdump -s -j xxxx`。
 
 ### objcopy
 
@@ -219,5 +222,27 @@ Disassembly of section .text:
 . **For negative LHS**, the value of LHS >> RHS is *implementation-defined* where in most implementations, this performs arithmetic right shift (so that the result remains negative). Thus in most implementations, right shifting a signed LHS fills the new higher-order bits with the original sign bit (i.e. with 0 if it was non-negative and 1 if it was negative).
 
 因此，右移操作的结果类型仅取决于 lhs 操作数。
+
+
+## abstract machine
+
+什么是 AM (abstract machine) ?
+
+一个可以支撑各种程序运行在各种架构上的库，即一组API（不同的架构具有不同的实现方式，但保持作用统一），这组统一抽象的API代表了程序运行对计算机的需求, 我们把这组API称为抽象计算机.
+
+作为一个向程序提供运行时环境的库, AM根据程序的需求把库划分成以下模块
+
+**AM = TRM + IOE + CTE + VME + MPE**
+
+- TRM (Turing Machine) - 图灵机, 最简单的运行时环境, 为程序提供基本的计算能力
+- IOE (I/O Extension) - 输入输出扩展, 为程序提供输出输入的能力
+- CTE (Context Extension) - 上下文扩展, 为程序提供上下文管理的能力
+- VME (Virtual Memory Extension) - 虚存扩展, 为程序提供虚存管理的能力
+- MPE (Multi-Processor Extension) - 多处理器扩展, 为程序提供多处理器通信的能力 (PA中不涉及)
+
+
+## inline assembly
+
+[GCC-Inline-Assembly-HOWTO](http://www.ibiblio.org/gferg/ldp/GCC-Inline-Assembly-HOWTO.html)
 
 
