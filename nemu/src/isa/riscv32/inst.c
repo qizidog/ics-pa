@@ -55,7 +55,7 @@ static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_
     case TYPE_B: src1R(); src2R(); immB(); break;
     case TYPE_J:                   immJ(); break;
   }
-  Log("rs1: %d, rs2: %d, rd: %d, imm: %#x, pc: %#x", rs1, rs2, *rd, *imm, s->pc);
+  /* Log("rs1: %d, rs2: %d, rd: %d, imm: %#x, pc: %#x", rs1, rs2, *rd, *imm, s->pc); */
 }
 
 static int decode_exec(Decode *s) {
@@ -124,8 +124,8 @@ static int decode_exec(Decode *s) {
 
   // “M” Standard Extension for Integer Multiplication and Division
   INSTPAT("0000001 ????? ????? 000 ????? 01100 11", mul    , R, R(rd) = src1 * src2);
-  INSTPAT("0000001 ????? ????? 001 ????? 01100 11", mulh   , R, R(rd) = BITS((int64_t)src1 * (int64_t)src2, 63, 32));
-  INSTPAT("0000001 ????? ????? 010 ????? 01100 11", mulhsu , R, R(rd) = BITS((int64_t)src1 * (uint64_t)src2, 63, 32));
+  INSTPAT("0000001 ????? ????? 001 ????? 01100 11", mulh   , R, R(rd) = BITS(SEXT((int64_t)src1, 32) * SEXT((int64_t)src2, 32), 63, 32));
+  INSTPAT("0000001 ????? ????? 010 ????? 01100 11", mulhsu , R, R(rd) = BITS(SEXT((int64_t)src1, 32) * (uint64_t)src2, 63, 32));
   INSTPAT("0000001 ????? ????? 011 ????? 01100 11", mulhu  , R, R(rd) = BITS((uint64_t)src1 * (uint64_t)src2, 63, 32));
   INSTPAT("0000001 ????? ????? 100 ????? 01100 11", div    , R, R(rd) = (int64_t)src1 / (int64_t)src2);
   INSTPAT("0000001 ????? ????? 101 ????? 01100 11", divu   , R, R(rd) = (uint64_t)src1 / (uint64_t)src2);
