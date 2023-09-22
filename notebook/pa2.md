@@ -245,4 +245,15 @@ Disassembly of section .text:
 
 [GCC-Inline-Assembly-HOWTO](http://www.ibiblio.org/gferg/ldp/GCC-Inline-Assembly-HOWTO.html)
 
+## stdarg
+
+C语言是支持变参数函数的，为了获得数目可变的参数，可以使用C库 `stdarg.h` 中提供的宏。
+
+其实主要就是 `va_start`, `va_end`, `va_arg`, `va_copy` 这4个api，其中有一个比较坑的地方是 "If  ap  is passed to a function that uses va_arg(ap,type), then the value of ap is undefined after the return of that function."，导致在把各printf公用的参数解析功能抽取为函数时不小心触发 undefined behavior，极难排查（尤其是目前还没有实现printf打印），最后将函数转换为了宏定义才解决。
+
+也意识到C语言的变参数功能确实相对简陋，如果想要将接收到的变参数传递给另一个变参函数，更简单的方法是为变参函数设计一个va_list类型的形参。
+
+变参函数的底层原理其实是通过汇编到栈里面去逐个取被压栈的传入变量。
+
+
 

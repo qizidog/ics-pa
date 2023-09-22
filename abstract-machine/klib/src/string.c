@@ -68,6 +68,17 @@ char *strcat(char *dst, const char *src) {
   return dst;
 }
 
+char *strncat(char *dst, const char *src, size_t n) {
+  size_t len_d = strlen(dst);
+  size_t i;
+
+  for (i = 0; i < n && src[i] != '\0'; i++)
+    dst[len_d + i] = src[i];
+  dst[len_d + i] = '\0';
+
+  return dst;
+}
+
 int strncmp(const char *s1, const char *s2, size_t n) {
   const char *p1 = s1, *p2 = s2;
   for (size_t i = 0; i < n; i++) {
