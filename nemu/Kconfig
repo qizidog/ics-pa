@@ -154,6 +154,11 @@ config WATCHPOINT
   bool "Enable watchpoint tracer"
   default y
 
+config MTRACE
+  depends on TRACE && TARGET_NATIVE_ELF && ENGINE_INTERPRETER
+  bool "Enable memory tracer"
+  default n
+
 config DIFFTEST
   depends on TARGET_NATIVE_ELF
   bool "Enable differential testing"
