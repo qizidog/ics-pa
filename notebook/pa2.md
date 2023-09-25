@@ -256,4 +256,30 @@ C语言是支持变参数函数的，为了获得数目可变的参数，可以�
 变参函数的底层原理其实是通过汇编到栈里面去逐个取被压栈的传入变量。
 
 
+## trace
+
+在menuconfig中有几个关于trace的宏定义（其中CONFIG_WATCHPOINT是在pa1中添加的），RTFSC，弄清楚各配置项的作用：
+
+```text
+# Testing and Debugging
+#
+CONFIG_TRACE=y  # 是否启用日志记录
+CONFIG_TRACE_START=0  # 日志记录从第0条指令开始
+CONFIG_TRACE_END=10000  # 日志记录从第10000条指令结束
+CONFIG_ITRACE=y  # 是否启用指令记录
+CONFIG_ITRACE_COND="true"  # 如果启用指令记录，可以灵活定义记录条件
+CONFIG_WATCHPOINT=y  # 是否启用监视点
+# CONFIG_DIFFTEST is not set
+CONFIG_DIFFTEST_REF_PATH="none"
+CONFIG_DIFFTEST_REF_NAME="none"
+# end of Testing and Debugging
+```
+
+注意区分 `Log` 和 `trace`，手动调用前者会同时在标准输出和日志中记录信息，后者负责自动记录某些特定场景的日志。
+
+
+
+
+
+
 

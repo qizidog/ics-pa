@@ -6,4 +6,7 @@
 
 bool check_watchpoints();
 
+void put_ringbuf(char * buf);
+void ringbuf_display();
+
 #endif

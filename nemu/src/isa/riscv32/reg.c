@@ -24,11 +24,15 @@ const char *regs[] = {
 };
 
 void isa_reg_display() {
-  const char* pattern = "%-4s\t%-#10x\n";
+  printf("Register information display as follows:\n");
+  const char* pattern = "\t%-4s\t%-#12x";
   for (int i = 0; i < ARRLEN(regs); i++) {
     printf(pattern, regs[i], gpr(i));
+    if ((i & 1) == 1) printf("\n");
+    else printf("|");
   }
   printf(pattern, "pc", cpu.pc);
+  printf("\n");
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
