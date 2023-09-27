@@ -594,7 +594,18 @@ klib 的 `stdio.c`, `stdlib.c`, `string.c` 中均定义了 `#if !defined(__ISA_N
 
 > RTFSC, 找出spike中寄存器定义的顺序.
 
-spike-diff/difftest.cc中定义了DUT和REF之间约定的API。
+- spike-diff/difftest.cc中定义了DUT和REF之间约定的API。
+- spike 中的寄存器类名叫 `regfile_t`，定义在 `decode.h` 中。
+- spike 中的 RISC-V hart 类名叫 `state_t`，定义在 `preocessor.h` 中。
+- 寄存器名字的定义在 `disasm/regnames.cc` 里面（找的我好苦啊，直接全局搜 `zero` 就出来了）
+
+确认寄存器定义顺序一致后，直接调用 `memcmp` 比较内存是否一致即可完成 `isa_difftest_checkregs`。
+
+
+> 捕捉死循环(有点难度)
+
+拓展阅读——[计算的极限](https://zhuanlan.zhihu.com/p/270155475)
+
 
 ### [KVM](https://www.linux-kvm.org/page/Main_Page) & [QEMU](http://www.qemu.org/) & [Spike](https://github.com/riscv-software-src/riscv-isa-sim)
 
