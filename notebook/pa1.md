@@ -145,6 +145,9 @@ sudo apt install fd-find
 - 如果optstring中的参数项后跟一个冒号，表示该参数项必须接受参数（此时参数项和参数之间有没有空格都可以）
 - 如果optstring中的参数项后跟两个冒号，表示该参数项接受可选参数（此时参数项和参数之间不能有空格）
 
+Q: 补充一个之前一直感到疑惑的点，明明已经有optstring用来控制接受的命令行参数了，为什么还要有一个struct option类型的longopts来控制长参数，如果两者产生冲突了怎么办？
+
+A: optstring只控制短参数项的行为，longopts只控制长参数项的行为。getopt_long是否接受参数通过struct option的第2项成员来控制，返回值通过struct option的第4项成员来控制。
 
 ### constructor & destructor
 

@@ -240,12 +240,122 @@ Disassembly of section .text:
 - VME (Virtual Memory Extension) - 虚存扩展, 为程序提供虚存管理的能力
 - MPE (Multi-Processor Extension) - 多处理器扩展, 为程序提供多处理器通信的能力 (PA中不涉及)
 
+**PA构建计算机系统的全过程:**
 
-## inline assembly
+[计算机是个抽象层](https://nju-projectn.github.io/ics-pa-gitbook/ics2022/images/pa-concept.png)
+
+### AM 项目结构
+
+如果说现阶段的 nemu 是模拟了一个 cpu，那么 abstract-machine 就是模拟了一个可以运行的系统级框架（还不能称作为操作系统）以及库函数。总体来看，abstract-machine包含了 am 和 klib 两个部分。
+
+- am - 不同架构的AM API实现, 目前只需要关注NEMU相关内容即可（abstract-machine/am/include/am.h列出了AM中的所有API）
+- klib - 一些架构无关的库函数, 方便应用程序的开发
+
+```bash
+abstract-machine
+├── am                                  # AM相关
+│   ├── include
+│   │   ├── amdev.h
+│   │   ├── am.h
+│   │   └── arch                        # 架构相关的头文件定义
+│   ├── Makefile
+│   └── src
+│       ├── mips
+│       │   ├── mips32.h
+│       │   └── nemu                    # mips32-nemu相关的实现
+│       ├── native                      # 以宿主机为平台的AM实现
+│       │   ├── cte.c
+│       │   ├── ioe
+│       │   │   ├── audio.c
+│       │   │   ├── disk.c
+│       │   │   ├── gpu.c
+│       │   │   ├── input.c
+│       │   │   └── timer.c
+│       │   ├── ioe.c
+│       │   ├── mpe.c
+│       │   ├── platform.c
+│       │   ├── platform.h
+│       │   ├── trap.S
+│       │   ├── trm.c
+│       │   └── vme.c
+│       ├── platform
+│       │   └── nemu                    # 以NEMU为平台的AM实现
+│       │       ├── include
+│       │       │   └── nemu.h
+│       │       ├── ioe                 # IOE
+│       │       │   ├── audio.c
+│       │       │   ├── disk.c
+│       │       │   ├── gpu.c
+│       │       │   ├── input.c
+│       │       │   ├── ioe.c
+│       │       │   └── timer.c
+│       │       ├── mpe.c               # MPE, 当前为空
+│       │       └── trm.c               # TRM
+│       ├── riscv
+│       │   ├── nemu                    # riscv32(64)相关的实现
+│       │   │   ├── cte.c               # CTE
+│       │   │   ├── start.S             # 程序入口
+│       │   │   ├── trap.S
+│       │   │   └── vme.c               # VME
+│       │   └── riscv.h
+│       └── x86
+│           ├── nemu                    # x86-nemu相关的实现
+│           └── x86.h
+├── klib                                # 常用函数库
+├── Makefile                            # 公用的Makefile规则
+└── scripts                             # 构建/运行二进制文件/镜像的Makefile
+    ├── isa
+    │   ├── mips32.mk
+    │   ├── riscv32.mk
+    │   ├── riscv64.mk
+    │   └── x86.mk
+    ├── linker.ld                       # 链接脚本
+    ├── mips32-nemu.mk
+    ├── native.mk
+    ├── platform
+    │   └── nemu.mk
+    ├── riscv32-nemu.mk
+    ├── riscv64-nemu.mk
+    └── x86-nemu.mk
+```
+
+am 屏蔽了不同 isa 的底层实现细节，用来提供一组统一的、供程序使用的接口（例如把nemu_trap封装成halt）；klib 利用 am 提供的统一接口，拓展出一套统一的公用库函数（比如printf等标准库函数），方便应用程序的开发和调用。
+
+abstract-machine 和 am-kernels 的关系
+
+| TRM      | 计算       | 内存申请         | 结束运行      | 打印信息            |
+|----------|------------|------------------|---------------|---------------------|
+| 运行环境 | -          | malloc()/free()  | -             | printf()            |
+| AM API   | -          | heap             | halt()        | putch()             |
+| ISA接口  | 指令       | 物理内存地址空间 | nemu_trap指令 | I/O方式             |
+| 硬件模块 | 处理器     | 物理内存         | Monitor       | 串口                |
+| 电路实现 | cpu_exec() | pmem[]           | nemu_state    | serial_io_handler() |
+
+am-kernels子项目用于收录一些可以在AM上运行的测试集和简单程序。
+
+```bash
+am-kernels
+├── benchmarks                  # 可用于衡量性能的基准测试程序
+│   ├── coremark
+│   ├── dhrystone
+│   └── microbench
+├── kernels                     # 可展示的应用程序
+│   ├── hello
+│   ├── litenes                 # 简单的NES模拟器
+│   ├── nemu                    # NEMU
+│   ├── slider                  # 简易图片浏览器
+│   ├── thread-os               # 内核线程操作系统
+│   └── typing-game             # 打字小游戏
+└── tests                       # 一些具有针对性的测试集
+    ├── am-tests                # 针对AM API实现的测试集
+    └── cpu-tests               # 针对CPU指令实现的测试集
+```
+
+### inline assembly
 
 [GCC-Inline-Assembly-HOWTO](http://www.ibiblio.org/gferg/ldp/GCC-Inline-Assembly-HOWTO.html)
 
-## stdarg
+### stdarg
 
 C语言是支持变参数函数的，为了获得数目可变的参数，可以使用C库 `stdarg.h` 中提供的宏。
 
@@ -256,7 +366,7 @@ C语言是支持变参数函数的，为了获得数目可变的参数，可以�
 变参函数的底层原理其实是通过汇编到栈里面去逐个取被压栈的传入变量。
 
 
-## trace
+### trace config
 
 在menuconfig中有几个关于trace的宏定义（其中CONFIG_WATCHPOINT是在pa1中添加的），RTFSC，弄清楚各配置项的作用：
 
@@ -276,6 +386,221 @@ CONFIG_DIFFTEST_REF_NAME="none"
 ```
 
 注意区分 `Log` 和 `trace`，手动调用前者会同时在标准输出和日志中记录信息，后者负责自动记录某些特定场景的日志。
+
+
+### symbols table
+
+三类链接器符号：
+
+Global symbols（模块内部定义的全局符号）
+ – 由模块m定义并能被其他模块引用的符号。例如，非static C函数和非static的C全局变量(指不带static的全局变量)
+External symbols（外部定义的全局符号）
+ – 由其他模块定义并被模块m引用的全局符号
+Local symbols（本模块的局部符号）
+ – 仅由模块m定义和引用的本地符号。
+
+强符号和弱符号：
+
+– 函数名和已初始化的全局变量名是强符号
+– 未初始化的全局变量名是弱符号
+
+多重定义符号的处理规则：
+
+Rule 1: 强符号不能多次定义
+ – 强符号只能被定义一次，否则链接错误
+Rule 2: 若一个符号被定义为一次强符号和多次弱符号，则按强定义为准
+ – 对弱符号的引用被解析为其强定义符号
+Rule 3: 若有多个弱符号定义，则任选其中一个
+ – 使用命令 gcc –fno-common链接时，会告诉链接器在 遇到多个弱定义的全局符号时输出一条警告信息。
+
+符号解析集合：
+
+- E 将被合并以组成可执行文件的所有目标文件集合
+- U 当前所有未解析的引用符号的集合
+- D 当前所有定义符号的集合
+
+更多相关知识，到袁春风老师《计算机系统基础》课程的第11章去回顾。
+
+> 消失的符号
+
+局部变量、形参不属于elf中关注的符号。
+
+> 冗余的符号表
+
+`.o` 文件需要使用符号表来进行重定位和链接，可执行文件已经完成了重定位和链接，不再需要使用符号表，因此使用 `strip -s` 丢弃符号表后依然可以执行。
+
+> 寻找"Hello World!"
+
+"Hello World!" 字符串在 `.rodata` 节中。
+
+`.symtab` 中并没有直接存储符号信息，而是指向了 `strtab` 中对应的偏移地址。
+
+#### hd
+
+新认识到一个二进制处理工具 `hd`
+
+```bash
+❱❱❱ hd --help
+Usage:
+ hd [options] <file>...
+
+Display file contents in hexadecimal, decimal, octal, or ascii.
+
+Options:
+ -b, --one-byte-octal      one-byte octal display
+ -c, --one-byte-char       one-byte character display
+ -C, --canonical           canonical hex+ASCII display
+```
+
+### ftrace
+
+> 如何从jal和jalr指令中正确识别出函数调用指令和函数返回指令
+
+> 解析ELF文件
+
+> 不匹配的函数调用和返回
+
+
+## AM作为基础设施
+
+### 理解基础设施
+
+> 如何生成native的可执行文件：阅读相关Makefile, 尝试理解abstract-machine是如何生成native的可执行文件的.
+
+```makefile
+image:
+	@echo + LD "->" $(IMAGE_REL)
+	@g++ -pie -o $(IMAGE) -Wl,--whole-archive $(LINKAGE) -Wl,-no-whole-archive $(LDFLAGS_CXX) -lSDL2 -ldl
+
+run: image
+	$(IMAGE)
+
+gdb: image
+	gdb -ex "handle SIGUSR1 SIGUSR2 SIGSEGV noprint nostop" $(IMAGE)
+```
+
+查看 makefile 执行过程，生成native可执行文件主要包括4个步骤（以string.c为例）：
+1. 编译得到 `string.o`
+2. 编译并打包得到 `am-native.a`
+3. 编译并打包得到 `klib-native.a`
+4. `g++ -pie -o string-native -Wl,--whole-archive string.o am-native.a klib-native.a -Wl,-no-whole-archive -Wl,-z -Wl,noexecstack -lSDL2 -ldl` 得到可执行文件（命令中的路径被我简化了）
+
+
+> 如何在选择 native 架构时使用 gdb 调试程序？
+
+在 abstract-machine 的 Makefile 和 native.mk 中分别添加以下内容：
+
+```makefile
+# Makefile
+ifeq ($(ISA), native)
+  CFLAGS += -Og -ggdb3
+endif
+```
+
+```makefile
+# native.mk
+image:
+	@echo + LD "->" $(IMAGE_REL)
+	@g++ -Og -ggdb3 -pie -o $(IMAGE) -Wl,--whole-archive $(LINKAGE) -Wl,-no-whole-archive $(LDFLAGS_CXX) -lSDL2 -ldl
+```
+
+如此之后，便可支持在 native 模式下使用 gdb 调试。
+
+
+> 奇怪的错误码：为什么错误码是1呢? 你知道make程序是如何得到这个错误码的吗?
+
+`make ALL=string ARCH=native run` 报错原理：
+
+```bash
+Exit code = 01h
+make[1]: *** [/home/vbox/ics2022/abstract-machine/scripts/native.mk:24: run] Error 1
+ fail
+[          fail] FAIL!
+```
+
+当 `check` 失败时，`check` 调用了 `halt(1)`，最终是调用了 `exit(1)`。
+
+```c
+void halt(int code) {
+  const char *fmt = "Exit code = 40h\n";
+  for (const char *p = fmt; *p; p++) {
+    char ch = *p;
+    if (ch == '0' || ch == '4') {
+      ch = "0123456789abcdef"[(code >> (ch - '0')) & 0xf];
+    }
+    putch(ch);
+  }
+  __am_exit_platform(code);
+  putstr("Should not reach here!\n");
+  while (1);
+}
+
+void __am_exit_platform(int code) {
+  // let Linux clean up other resource
+  extern int __am_mpe_init;
+  if (__am_mpe_init && cpu_count() > 1) kill(0, SIGKILL);
+  exit(code);
+}
+```
+
+```markdown
+5.5 Errors in Recipes
+
+After each shell invocation returns, make looks at its exit status. If the shell completed successfully (the exit status is zero), the next line in the recipe is executed in a new shell; after the last line is finished, the rule is finished.
+
+If there is an error (the exit status is nonzero), make gives up on the current rule, and perhaps on all rules.
+
+Sometimes the failure of a certain recipe line does not indicate a problem. For example, you may use the mkdir command to ensure that a directory exists. If the directory already exists, mkdir will report an error, but you probably want make to continue regardless.
+
+To ignore errors in a recipe line, write a ‘-’ at the beginning of the line’s text (after the initial tab). The ‘-’ is discarded before the line is passed to the shell for execution.
+
+The exit status of make is always one of three values:
+
+- 0 - The exit status is zero if make is successful.
+- 2 - The exit status is two if make encounters any errors. It will print messages describing the particular errors.
+- 1 - The exit status is one if you use the ‘-q’ flag and make determines that some target is not already up to date. See Section 9.3 [Instead of Executing Recipes], page 111.
+```
+因此，当 exit 返回码为 1 时，make认为执行失败，显示报错。
+
+
+`make ALL=string ARCH=riscv32-nemu run` 报错原理：
+
+当 `check` 失败时，`check` 调用了 `halt(1)` -> `nemu_trap(code)` -> `asm volatile("mv a0, %0; ebreak" : :"r"(code))` 即调用内联汇编将 "1" 放入 `$a0` 10号寄存器中，并调用 `ebreak`。`ebreak` -> `NEMUTRAP(s->pc, R(10))` -> `set_nemu_state(NEMU_END, thispc, code)`，其中 code = R(10) = 1，当执行下一条指令时，监测到 `NEMU_END` 状态，程序结束。
+
+
+> 为什么定义宏__NATIVE_USE_KLIB__之后就可以把native上的这些库函数链接到klib? 这具体是如何发生的? 尝试根据你在课堂上学习的链接相关的知识解释这一现象.
+
+klib 的 `stdio.c`, `stdlib.c`, `string.c` 中均定义了 `#if !defined(__ISA_NATIVE__) || defined(__NATIVE_USE_KLIB__)`。
+
+当将 ARCH 指定为 `native` 时，abstract-machine 的 Makefile 会在 CFLAGS 中定义 `-D__ISA_$(shell echo $(ISA) | tr a-z A-Z)__`，即 `-D__ISA_NATIVE__` （tr实现小写转大写）。若不定义 `__NATIVE_USE_KLIB__` 则klib中的标准库函数不会被定义，在链接的过程中会自动链接 `libc.o` 标准库。同理，当不使用native架构或者定义了 `__NATIVE_USE_KLIB__` 时，klib中将会定义和标准库中同名的函数，链接优先级高于标准库，故最终使用klib定义的库函数。
+
+⭐️可以先在native上用glibc的库函数来测试你编写的测试代码, 然后在native上用这些测试代码来测试你的klib实现, 最后再在NEMU上运行这些测试代码来测试你的NEMU实现.
+
+
+> 具有移植性的指针类型
+
+标准的整数类型 uintptr_t，它可以在任何平台上表示指针类型的大小。intptr_t。
+
+
+> `make ARCH=native mainargs=h run` 指令中的mainargs是怎么传递到main方法中的？
+
+在 `platform.c` 中定义了init_platform(constructor)，方法中通过getenv获取了"mainargs"，然后直接调用main方法。`native/trm.c` 中调用了 `__am_platform_dummy`，注释说明了 `__am_platform_dummy` 的作用（值得一看）。由于是直接在native环境中运行，`_start` 方法执行后会自动调用constructor，进而导致main方法的执行。
+
+
+> `make ARCH=riscv32-nemu mainargs=h run` 指令中的mainargs是怎么传递到main方法中的？
+
+`trm.c` 中直接执行了 `main(mainargs)`，其中 `static const char mainargs[] = MAINARGS;`，`MAINARGS` 又是在 `paltform/nemu.mk` 中通过 `CFLAGS += -DMAINARGS=\"$(mainargs)\"` 传入的。
+
+
+> RTFSC, 找出spike中寄存器定义的顺序.
+
+spike-diff/difftest.cc中定义了DUT和REF之间约定的API。
+
+### [KVM](https://www.linux-kvm.org/page/Main_Page) & [QEMU](http://www.qemu.org/) & [Spike](https://github.com/riscv-software-src/riscv-isa-sim)
+
+
+
+
 
 
 
