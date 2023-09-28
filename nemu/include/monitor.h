@@ -3,10 +3,14 @@
 #define __MONITOR_H__
 
 #include <common.h>
+#include <cpu/decode.h>
 
 bool check_watchpoints();
 
-void put_ringbuf(char * buf);
-void ringbuf_display();
+void invoke_itrace(char * buf);
+void itrace_display();
+
+void init_ftrace(char *elf_trace_file);
+void invoke_ftrace(Decode* s);
 
 #endif
