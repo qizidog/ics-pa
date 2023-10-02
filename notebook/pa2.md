@@ -511,9 +511,9 @@ In the above, link is true when the register is either x1 or x5.
 
 ## AM作为基础设施
 
-### 理解基础设施
+### 如何生成native的可执行文件
 
-> 如何生成native的可执行文件：阅读相关Makefile, 尝试理解abstract-machine是如何生成native的可执行文件的.
+> 阅读相关Makefile, 尝试理解abstract-machine是如何生成native的可执行文件的.
 
 ```makefile
 image:
@@ -533,6 +533,7 @@ gdb: image
 3. 编译并打包得到 `klib-native.a`
 4. `g++ -pie -o string-native -Wl,--whole-archive string.o am-native.a klib-native.a -Wl,-no-whole-archive -Wl,-z -Wl,noexecstack -lSDL2 -ldl` 得到可执行文件（命令中的路径被我简化了）
 
+### gdb调试native
 
 > 如何在选择 native 架构时使用 gdb 调试程序？
 
@@ -554,10 +555,11 @@ image:
 
 如此之后，便可支持在 native 模式下使用 gdb 调试。
 
+### 奇怪的错误码
 
-> 奇怪的错误码：为什么错误码是1呢? 你知道make程序是如何得到这个错误码的吗?
+> 为什么错误码是1呢? 你知道make程序是如何得到这个错误码的吗?
 
-`make ALL=string ARCH=native run` 报错原理：
+**`make ALL=string ARCH=native run` 报错原理：**
 
 ```bash
 Exit code = 01h
@@ -610,11 +612,11 @@ The exit status of make is always one of three values:
 ```
 因此，当 exit 返回码为 1 时，make认为执行失败，显示报错。
 
-
-`make ALL=string ARCH=riscv32-nemu run` 报错原理：
+**`make ALL=string ARCH=riscv32-nemu run` 报错原理：**
 
 当 `check` 失败时，`check` 调用了 `halt(1)` -> `nemu_trap(code)` -> `asm volatile("mv a0, %0; ebreak" : :"r"(code))` 即调用内联汇编将 "1" 放入 `$a0` 10号寄存器中，并调用 `ebreak`。`ebreak` -> `NEMUTRAP(s->pc, R(10))` -> `set_nemu_state(NEMU_END, thispc, code)`，其中 code = R(10) = 1，当执行下一条指令时，监测到 `NEMU_END` 状态，程序结束。
 
+### `__NATIVE_USE_KLIB__` 原理
 
 > 为什么定义宏__NATIVE_USE_KLIB__之后就可以把native上的这些库函数链接到klib? 这具体是如何发生的? 尝试根据你在课堂上学习的链接相关的知识解释这一现象.
 
@@ -624,11 +626,13 @@ klib 的 `stdio.c`, `stdlib.c`, `string.c` 中均定义了 `#if !defined(__ISA_N
 
 ⭐️可以先在native上用glibc的库函数来测试你编写的测试代码, 然后在native上用这些测试代码来测试你的klib实现, 最后再在NEMU上运行这些测试代码来测试你的NEMU实现.
 
+### 可移植性的指针
 
 > 具有移植性的指针类型
 
 标准的整数类型 uintptr_t，它可以在任何平台上表示指针类型的大小。intptr_t。
 
+### mainargs参数传递
 
 > `make ARCH=native mainargs=h run` 指令中的mainargs是怎么传递到main方法中的？
 
@@ -639,6 +643,7 @@ klib 的 `stdio.c`, `stdlib.c`, `string.c` 中均定义了 `#if !defined(__ISA_N
 
 `trm.c` 中直接执行了 `main(mainargs)`，其中 `static const char mainargs[] = MAINARGS;`，`MAINARGS` 又是在 `paltform/nemu.mk` 中通过 `CFLAGS += -DMAINARGS=\"$(mainargs)\"` 传入的。
 
+### spike寄存器定义
 
 > RTFSC, 找出spike中寄存器定义的顺序.
 
@@ -650,12 +655,14 @@ klib 的 `stdio.c`, `stdlib.c`, `string.c` 中均定义了 `#if !defined(__ISA_N
 确认寄存器定义顺序一致后，直接调用 `memcmp` 比较内存是否一致即可完成 `isa_difftest_checkregs`。
 
 
-> 捕捉死循环(有点难度)
+### 捕捉死循环(有点难度)
 
-拓展阅读——[计算的极限](https://zhuanlan.zhihu.com/p/270155475)
+TODO
 
+### 拓展阅读
 
-### [KVM](https://www.linux-kvm.org/page/Main_Page) & [QEMU](http://www.qemu.org/) & [Spike](https://github.com/riscv-software-src/riscv-isa-sim)
+- [计算的极限](https://zhuanlan.zhihu.com/p/270155475)
+- [KVM](https://www.linux-kvm.org/page/Main_Page) & [QEMU](http://www.qemu.org/) & [Spike](https://github.com/riscv-software-src/riscv-isa-sim)
 
 
 
