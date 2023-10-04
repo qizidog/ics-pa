@@ -184,3 +184,29 @@ root@root:~# systemctl daemon-reload
 root@root:~# systemctl enable /etc/systemd/system/dav_umount.service
 root@root:~# systemctl status dav_umount.service  # 应该会看到active，如果没有的话就手动start一下
 ```
+
+## vnc+xfce4连接远程服务器
+
+> vnc+xfce4连接服务器成功后执行nume发生警告提示"Xlib:  extension "XInputExtension" missing on display ":1.0"."
+
+警告产生原因是使用了tightvncserver。tightvncserver最后的版本维持在1.3.10，是2009年的版本，推荐使用[TigerVNC](https://github.com/TigerVNC/tigervnc/releases)，基于RealVNC 4和X.org，并在2009年脱离父项目TightVNC。
+
+> 改用TigerVNC后执行`vncserver`命令报错
+
+是由 `~/.vnc/xstartup` 导致的，xstartup中可以直接定义需要启用的桌面环境，之前使用xtartup的是：
+
+```bash
+#!/bin/bash
+startxfce4 &
+```
+现在需要改成：
+```bash
+#!/bin/bash
+xfce4-session
+```
+最后准备了两个快捷命令：
+```bash
+alias vncstart="vncserver -localhost -geometry 1080x640 :1"
+alias vnckill="vncserver -kill :1"
+```
+`-localhost` 参数要借助 `alias svnc="ssh -L 5901:localhost:5901 -C -N alicloud"` 来打通远程服务器之间的端口（可以避免开放防火墙）。
