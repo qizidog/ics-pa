@@ -242,7 +242,7 @@ Disassembly of section .text:
 
 **PA构建计算机系统的全过程:**
 
-[计算机是个抽象层](https://nju-projectn.github.io/ics-pa-gitbook/ics2022/images/pa-concept.png)
+![计算机是个抽象层](https://nju-projectn.github.io/ics-pa-gitbook/ics2022/images/pa-concept.png)
 
 ### AM 项目结构
 
