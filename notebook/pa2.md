@@ -664,6 +664,24 @@ TODO
 - [计算的极限](https://zhuanlan.zhihu.com/p/270155475)
 - [KVM](https://www.linux-kvm.org/page/Main_Page) & [QEMU](http://www.qemu.org/) & [Spike](https://github.com/riscv-software-src/riscv-isa-sim)
 
+## 输入输出
+
+### malloc align
+
+- 实现内存大小对齐：`#define ROUNDUP(a, sz) ((((uintptr_t)a) + (sz) - 1) & ~((sz) - 1))`
+- [实现申请内存的指针地址满足对齐要求（不是指内存大小对齐）](https://blog.csdn.net/jin739738709/article/details/122992753)：亮点在于储存raw指针以便后续释放这段首地址对齐的内存空间。
+
+### 跑分
+
+dhrystone, coremark, microbench 都是在实践中已经被广泛用于处理器运算能力的基准测试程序。
+
+在阿里云服务器（2核vCPU，2GiB内存）上的跑分情况：
+
+| benchmarks      | riscv32-nemu | native |
+|-----------------|--------------|--------|
+| dhrystone       | 46           | 44045  |
+| coremark        | 120          | 32460  |
+| microbench(ref) | 139          | 38262  |
 
 
 
