@@ -683,7 +683,15 @@ dhrystone, coremark, microbench 都是在实践中已经被广泛用于处理器
 | coremark        | 120          | 32460  |
 | microbench(ref) | 139          | 38262  |
 
+### handler 调用逻辑
 
+**nemu 中 handler 的调用逻辑: `paddr_read → mmio_read → map_read → invoke_callback → handler`**
+
+其中 `handler` 通过 `init_xxx` 中的 `add_mmio_map` 提前注册到 `maps` 数组中。
+
+**am 中 handler 的调用逻辑: `io_read → ioe_read → lut[reg](buf)`**
+
+其中 `reg` 在 `amdev.h` 中通过AM_DEVREG定义（同时定义了 `AM_##reg` 和 `AM_##reg##_T`），`lut[reg]` 就是 `handler`，buf是 `AM_##reg##_T` 类型的结构体，`buf` 结构体的值由 `handler` 函数控制修改，并且 `buf` 被作为 `io_read` 的结果返回。
 
 
 
