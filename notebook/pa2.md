@@ -687,14 +687,30 @@ dhrystone, coremark, microbench 都是在实践中已经被广泛用于处理器
 
 **nemu 中 handler 的调用逻辑: `paddr_read → mmio_read → map_read → invoke_callback → handler`**
 
-其中 `handler` 通过 `init_xxx` 中的 `add_mmio_map` 提前注册到 `maps` 数组中。
+`paddr_read`, `paddr_write` 是读写 nemu 内存的接口，其中 `handler` 通过 `init_xxx` 中的 `add_mmio_map` 提前注册到 `maps` 数组中。
 
-**am 中 handler 的调用逻辑: `io_read → ioe_read → lut[reg](buf)`**
+**am 中 handler 的调用逻辑: `io_read → ioe_read → lut[reg](buf) → inb/outb`**
 
-其中 `reg` 在 `amdev.h` 中通过AM_DEVREG定义（同时定义了 `AM_##reg` 和 `AM_##reg##_T`），`lut[reg]` 就是 `handler`，buf是 `AM_##reg##_T` 类型的结构体，`buf` 结构体的值由 `handler` 函数控制修改，并且 `buf` 被作为 `io_read` 的结果返回。
+其中 `reg` 在 `amdev.h` 中通过 `AM_DEVREG` 定义（同时定义了 `AM_##reg` 和 `AM_##reg##_T`），`lut[reg]` 就是 `handler`，buf是 `AM_##reg##_T` 类型的结构体，`buf` 结构体的值由 `handler` 函数调用 `inb`, `outb` 等 API 控制修改，并且 `buf` 被作为 `io_read` 的结果返回。
 
+两种 handler 之间的联系：am 中的 handler 通过 in/out 读写内存数据，而实际上在 nemu 中内存的读写是通过 paddr_read/paddr_write 来实现的。
 
+### VGA & Audio
 
+[FreeVGA](https://www.scs.stanford.edu/10wi-cs140/pintos/specs/freevga/home.htm)
+
+audio: TODO
+
+### RTFSC自查指南
+
+- NEMU中除了fixdep, kconfig, 以及没有选择的ISA之外的全部已有代码(包括Makefile)
+- abstract-machine/am/下与$ISA-nemu相关的, 除去CTE和VME之外的代码
+- abstract-machine/klib/中的所有代码
+- abstract-machine/Makefile和abstract-machine/scripts/中的所有代码
+- am-kernels/tests/cpu-tests/中的所有代码
+- am-kernels/tests/am-tests/中运行过的测试代码
+- am-kernels/benchmarks/microbench/bench.c
+- am-kernels/kernels/中的hello, slider和typing-game的所有代码
 
 
 
