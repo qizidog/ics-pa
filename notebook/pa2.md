@@ -695,11 +695,16 @@ dhrystone, coremark, microbench 都是在实践中已经被广泛用于处理器
 
 两种 handler 之间的联系：am 中的 handler 通过 in/out 读写内存数据，而实际上在 nemu 中内存的读写是通过 paddr_read/paddr_write 来实现的。
 
-### VGA & Audio
+对于要求实现的4个IOE，应该分类别地认识他们，
 
-[FreeVGA](https://www.scs.stanford.edu/10wi-cs140/pintos/specs/freevga/home.htm)
+- 输出（ioe_write）：serial, vga
+- 输入（ioe_read）：timer, keyboard
+
+拓展阅读：[FreeVGA](https://www.scs.stanford.edu/10wi-cs140/pintos/specs/freevga/home.htm)
 
 audio: TODO
+
+## 冯诺依曼计算机系统
 
 ### RTFSC自查指南
 
@@ -712,7 +717,42 @@ audio: TODO
 - am-kernels/benchmarks/microbench/bench.c
 - am-kernels/kernels/中的hello, slider和typing-game的所有代码
 
+### 在nemu上运行nemu
 
+在NEMU上运行NEMU时，nemu会进行如下的工作:
 
+1. 保存NEMU当前的配置选项
+2. 加载一个新的配置文件, 将NEMU编译到AM上, 并把mainargs指示bin文件作为这个NEMU的镜像文件
+3. 恢复第1步中保存的配置选项
+4. 重新编译NEMU, 并把第2步中的NEMU作为镜像文件来运行
 
+其中，第2步把NEMU编译到AM时, 配置系统会定义宏CONFIG_TARGET_AM, 此时NEMU的行为和之前相比有所变化:
+
+- sdb, DiffTest等调试功能不再开启, 因为AM无法提供它所需要的库函数(如文件读写, 动态链接, 正则表达式等)
+- 通过AM IOE来实现NEMU的设备
+
+注意编译到AM时sdb相关功能会被屏蔽，如果之前的实现没有做好兼容，可能导致编译失败。
+
+### 编译与链接
+
+> 在nemu/include/cpu/ifetch.h中, 你会看到由static inline开头定义的inst_fetch()函数. 分别尝试去掉static, 去掉inline或去掉两者, 然后重新进行编译, 你可能会看到发生错误. 请分别解释为什么这些错误会发生/不发生? 你有办法证明你的想法吗?
+
+测试了一下，都没有发生错误，应该是因为 inst_ifetch 被定义在ifetch.h头文件中，当头文件被include时直接替换到了源文件中，不存在static变量仅可在同一个文件中使用的问题。
+
+> 1. 在nemu/include/common.h中添加一行volatile static int dummy; 然后重新编译NEMU. 请问重新编译后的NEMU含有多少个dummy变量的实体? 你是如何得到这个结果的?
+
+修改makefile，让编译生成 `.i` 文件，再通过 `grep -r -c 'dummy' build/* | grep '\.i:[1-9]'| wc -l` 统计 dummy 数量。得到35个dummy。
+
+> 2. 添加上题中的代码后, 再在nemu/include/debug.h中添加一行volatile static int dummy; 然后重新编译NEMU. 请问此时的NEMU含有多少个dummy变量的实体? 与上题中dummy变量实体数目进行比较, 并解释本题的结果.
+
+也是35个dummy。`common.h` 中 include 了 `debug.h`，`debug.h` 中又 include 了 `common.h`（做了防止循环包含的处理），因此，不管dummy在哪个头文件中声明效果都一样。
+
+> 3. 修改添加的代码, 为两处dummy变量进行初始化:volatile static int dummy = 0; 然后重新编译NEMU. 你发现了什么问题? 为什么之前没有出现这样的问题? (回答完本题后可以删除添加的代码.)
+
+```
+error: redefinition of ‘dummy’
+   49 | volatile static int dummy = 0;
+```
+
+初始化将 dummy 定义为强符号，强符号仅能被定义一次，不初始化时 dummy 是弱符号，弱符号可以被重复定义多次。
 

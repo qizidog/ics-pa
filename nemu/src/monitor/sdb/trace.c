@@ -200,13 +200,13 @@ void invoke_ftrace(Decode* s) {
     from = ft_name(pc);
     to = ft_name(dnpc);
     if (from == NULL || to == NULL) return;
-    Log("RET   %s[" FMT_PADDR "] -> %s[" FMT_PADDR "]", from, pc, to, dnpc);
+    Log("[FTRACE-RET]   %s[" FMT_PADDR "] -> %s[" FMT_PADDR "]", from, pc, to, dnpc);
   } else if (LINK(rd) && (!LINK(rs1) || rd == rs1)) {  // push
   /* } else if (rd == 1) { */
     from = ft_name(pc);
     to = ft_name(dnpc);
     if (from == NULL || to == NULL) return;
-    Log("CALL  %s[" FMT_PADDR "] -> %s[" FMT_PADDR "]", from, pc, to, dnpc);
+    Log("[FTRACE-CALL]  %s[" FMT_PADDR "] -> %s[" FMT_PADDR "]", from, pc, to, dnpc);
   } else {  // pop, then push
     panic("Coroutines not implemented");
   }

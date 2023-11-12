@@ -40,6 +40,12 @@ $(OBJ_DIR)/%.o: %.cc
 	@$(CXX) $(CFLAGS) $(CXXFLAGS) -c -o $@ $<
 	$(call call_fixdep, $(@:.o=.d), $@)
 
+
+$(OBJ_DIR)/%.i: %.c
+	@echo + CC $<
+	@mkdir -p $(dir $@)
+	@$(CC) $(CFLAGS) -E -o $@ $<
+
 # Depencies
 -include $(OBJS:.o=.d)
 
@@ -48,6 +54,8 @@ $(OBJ_DIR)/%.o: %.cc
 .PHONY: app clean
 
 app: $(BINARY)
+
+assemble: $(SRCS:%.c=$(OBJ_DIR)/%.i)
 
 $(BINARY): $(OBJS) $(ARCHIVES)
 	@echo + LD $@
