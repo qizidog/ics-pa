@@ -30,10 +30,14 @@ f(30) f(31)
 .align 3
 .globl __am_asm_trap
 __am_asm_trap:
+  // 构建Context结构体实参，准备传递给__am_irq_handle
   addi sp, sp, -CONTEXT_SIZE
 
+  // 把31个寄存器依次压栈（除了x2栈指针寄存器），但是x2在栈上是留空的，
+  // 实际上相当于占用了栈上用于存放32个寄存器的空间
   MAP(REGS, PUSH)
 
+  // 压栈保存状态寄存器
   csrr t0, mcause
   csrr t1, mstatus
   csrr t2, mepc
@@ -47,15 +51,16 @@ __am_asm_trap:
   or t1, t1, a0
   csrw mstatus, t1
 
-  mv a0, sp
+  mv a0, sp  // 将栈顶地址（Context对象地址）作为__am_irq_handle的实参
   jal __am_irq_handle
 
+  // 恢复状态寄存器
   LOAD t1, OFFSET_STATUS(sp)
   LOAD t2, OFFSET_EPC(sp)
   csrw mstatus, t1
   csrw mepc, t2
 
-  MAP(REGS, POP)
+  MAP(REGS, POP)  // 恢复通用寄存器
 
-  addi sp, sp, CONTEXT_SIZE
+  addi sp, sp, CONTEXT_SIZE  // 恢复栈指针
   mret
