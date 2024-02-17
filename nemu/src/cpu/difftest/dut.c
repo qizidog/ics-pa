@@ -96,6 +96,18 @@ static void checkregs(CPU_state *ref, vaddr_t pc) {
     nemu_state.state = NEMU_ABORT;
     nemu_state.halt_pc = pc;
     isa_reg_display();
+
+    printf("=============Reference CPU Status===============\n");
+    extern const char* regs[ARRLEN(ref->gpr)];
+    const char* pattern = "\t%-4s\t%-#12x";
+    for (int i = 0; i < ARRLEN(regs); i++) {
+      printf(pattern, regs[i], ref->gpr[i]);
+      if ((i & 1) == 1) printf("\n");
+      else printf("|");
+    }
+    printf(pattern, "pc", ref->pc);
+    printf("\n");
+
   }
 }
 
