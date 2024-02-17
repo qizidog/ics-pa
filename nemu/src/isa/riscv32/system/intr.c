@@ -15,12 +15,25 @@
 
 #include <isa.h>
 
+enum {
+  MSTATUS = 0x300,
+  MTVEC = 0x305,
+  MEPC = 0x341, MCAUSE = 0x342
+};
+
 word_t isa_raise_intr(word_t NO, vaddr_t epc) {
-  /* TODO: Trigger an interrupt/exception with ``NO''.
+  /* Trigger an interrupt/exception with ``NO''.
    * Then return the address of the interrupt/exception vector.
    */
 
-  return 0;
+  // 1. 将当前PC值保存到mepc寄存器
+  csr[MEPC] = epc;
+  // 2. 在mcause寄存器中设置异常号
+  csr[MCAUSE] = NO;
+  // 3. 从mtvec寄存器中取出异常入口地址
+  uint64_t trap_addr = csr[MTVEC];
+  // 4. 跳转到异常入口地址
+  return trap_addr;
 }
 
 word_t isa_query_intr() {

@@ -18,11 +18,15 @@ Context* __am_irq_handle(Context *c) {
   return c;
 }
 
-extern void __am_asm_trap(void);
+extern void __am_asm_trap(void);  // 异常入口
 
 bool cte_init(Context*(*handler)(Event, Context*)) {
   // initialize exception entry
   asm volatile("csrw mtvec, %0" : : "r"(__am_asm_trap));
+
+  // initialize mstatus
+  int mstatus = 0x1800;
+  asm volatile("csrw mstatus, %0" : : "r"(mstatus));
 
   // register event handler
   user_handler = handler;
