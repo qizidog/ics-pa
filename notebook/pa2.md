@@ -355,6 +355,96 @@ am-kernels
 
 [GCC-Inline-Assembly-HOWTO](http://www.ibiblio.org/gferg/ldp/GCC-Inline-Assembly-HOWTO.html)
 
+GCC的内联汇编使用AT&T的汇编语法格式，the GNU C Compiler for Linux, uses AT&T/UNIX assembly syntax ("Op-code src dst").
+
+内联汇编的基础语法 (`basic asm`) 是 `asm("assembler code");`，使用 `asm` 和 `__asm__` 都是合法的，合理使用可以规避命名冲突。拓展asm (`extended asm`) 的格式为：
+
+```c
+asm ( assembler template
+    : output operands                  /* optional */
+    : input operands                   /* optional */
+    : list of clobbered registers      /* optional */
+    );
+```
+
+学习内联汇编，需要掌握几个部分：
+
+**对于 assembler template**
+
+换行符。If we have more than one instructions, we write one per line in double quotes, and also suffix a ’\n’ and ’\t’ to the instruction. This is because gcc sends each instruction as a string to as(GAS) and by using the newline/tab we send correctly formatted lines to the assembler. Example,
+
+```c
+ __asm__ ("movl %eax, %ebx\n\t"
+          "movl $56, %esi\n\t"
+          "movl %ecx, $label(%edx,%ebx,$4)\n\t"
+          "movb %ah, (%ebx)"
+         );
+```
+
+寄存器标识。
+上面给出的例子使用的是基础asm格式，在 basic asm 语法中，寄存器前使用单个 `%` 即可（如上案例）；
+在 extended asm 中，operands have a single % as prefix, and there are two %’s prefixed to the register name to distinguish between the operands and registers.
+
+**对于 operands**
+
+- basic operands form `"constraint" (C expression)`.
+- the first output operand is numbered 0, and the last input operand is numbered n-1.
+- ordinary output operands must be write-only.
+
+commonly used constraints in operands
+
+1. Register operand constraint(r)
+
+When operands are specified using this constraint, they get stored in General Purpose Registers(GPR).
+
+When the "r" constraint is specified, gcc may keep the variable in any of the available GPRs. To specify the register, you must directly specify the register names by using specific register constraints. They are:
+
++---+--------------------+
+| r |    Register(s)     |
++---+--------------------+
+| a |   %eax, %ax, %al   |
+| b |   %ebx, %bx, %bl   |
+| c |   %ecx, %cx, %cl   |
+| d |   %edx, %dx, %dl   |
+| S |   %esi, %si        |
+| D |   %edi, %di        |
++---+--------------------+
+
+Example, `__asm__ __volatile__("addl  %%ebx,%%eax"
+                             :"=a"(foo)
+                             :"a"(foo), "b"(bar)
+                             );`
+
+2. memory operand constraint(m)
+
+When the operands are in the memory, any operations performed on them will occur directly in the memory location. Example, `asm("sidt %0\n" : :"m"(loc));`
+
+3. matching(Digit) constraints
+
+In some cases, a single variable may serve as both the input and the output operand. Such cases may be specified in "asm" by using matching constraints. Example, `asm ("incl %0" :"=a"(var):"0"(var));`
+
+Some other constraints used are:
+
+(1) "m" : A memory operand is allowed, with any kind of address that the machine supports in general.
+(2) "o" : A memory operand is allowed, but only if the address is offsettable. ie, adding a small offset to the address gives a valid address.
+(3) "V" : A memory operand that is not offsettable. In other words, anything that would fit the `m’ constraint but not the `o’constraint.
+(4) "i" : An immediate integer operand (one with constant value) is allowed. This includes symbolic constants whose values will be known only at assembly time.
+(5) "n" : An immediate integer operand with a known numeric value is allowed. Many systems cannot support assembly-time constants for operands less than a word wide. Constraints for these operands should use ’n’ rather than ’i’.
+(6) "g" : Any register, memory or immediate integer operand is allowed, except for registers that are not general registers.
+
+还有一些x86架构独有的constraints，这里就不列出了。
+
+4. constraint modifiers
+
+(1) "=" : Means that this operand is write-only for this instruction.
+(2) "&" : An input operand can be tied to an earlyclobber operand if its only use as an input occurs before the early result is written.
+
+**对于 clobber list**
+
+We shoudn’t list the input and output registers in this list. Because, gcc knows that "asm" uses them (because they are specified explicitly as constraints). If the instructions use any other registers, implicitly or explicitly (and the registers are not present either in input or in the output constraint list), then those registers have to be specified in the clobbered list.
+
+If our instruction modifies memory in an unpredictable fashion, add "memory" to the list of clobbered registers.
+
 ### stdarg
 
 C语言是支持变参数函数的，为了获得数目可变的参数，可以使用C库 `stdarg.h` 中提供的宏。
