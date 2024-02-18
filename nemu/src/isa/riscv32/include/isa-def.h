@@ -23,7 +23,14 @@ typedef struct {
   vaddr_t pc;
 } riscv32_CPU_state;
 
+// riscv32 csr
 typedef word_t riscv32_CSR_state[4096];
+
+enum {
+  MSTATUS = 0x300,
+  MTVEC = 0x305,
+  MEPC = 0x341, MCAUSE = 0x342
+};
 
 // decode
 typedef struct {

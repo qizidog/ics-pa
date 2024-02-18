@@ -15,12 +15,6 @@
 
 #include <isa.h>
 
-enum {
-  MSTATUS = 0x300,
-  MTVEC = 0x305,
-  MEPC = 0x341, MCAUSE = 0x342
-};
-
 word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   /* Trigger an interrupt/exception with ``NO''.
    * Then return the address of the interrupt/exception vector.
