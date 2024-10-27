@@ -36,9 +36,9 @@ cpu_exec
 
 > In addition to the object code itself, object files may contain metadata used for linking or debugging, including: information to resolve symbolic cross-references between different modules, relocation information, stack unwinding information, comments, program symbols, debugging or profiling information. Other metadata may include the date and time of compilation, the compiler name and version, and other identifying information.
 
-> A computer programmer generates object code with a compiler or assembler. For example, 
-> **under Linux**, the GNU Compiler Collection compiler will generate files with a `.o` extension which use the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format. 
-> Compilation **on Windows** generates files with a `.obj` extension which use the [COFF](https://en.wikipedia.org/wiki/COFF) format. 
+> A computer programmer generates object code with a compiler or assembler. For example,
+> **under Linux**, the GNU Compiler Collection compiler will generate files with a `.o` extension which use the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
+> Compilation **on Windows** generates files with a `.obj` extension which use the [COFF](https://en.wikipedia.org/wiki/COFF) format.
 > **under macOS**, object files come with a `.o` extension which use the [Mach-O](https://en.wikipedia.org/wiki/Mach-O) format.
 > A linker is then used to combine the object code into one executable program or library pulling in precompiled system libraries as needed.
 
@@ -731,7 +731,7 @@ klib 的 `stdio.c`, `stdlib.c`, `string.c` 中均定义了 `#if !defined(__ISA_N
 
 > `make ARCH=riscv32-nemu mainargs=h run` 指令中的mainargs是怎么传递到main方法中的？
 
-`trm.c` 中直接执行了 `main(mainargs)`，其中 `static const char mainargs[] = MAINARGS;`，`MAINARGS` 又是在 `paltform/nemu.mk` 中通过 `CFLAGS += -DMAINARGS=\"$(mainargs)\"` 传入的。
+`trm.c` 中直接执行了 `main(mainargs)`，其中 `static const char mainargs[] = MAINARGS;`，`MAINARGS` 又是在 `platform/nemu.mk` 中通过 `CFLAGS += -DMAINARGS=\"$(mainargs)\"` 传入的。
 
 ### spike寄存器定义
 

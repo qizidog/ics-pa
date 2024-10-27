@@ -8,10 +8,9 @@
 怎么才能找到 SIGSTKSZ 这个宏变量定义的位置（ack试过了，glibc源码在哪）
 STFW有人踩过这个坑了，这种排坑方式不理想，没有使用从源头排查问题的方法：https://zhuanlan.zhihu.com/p/463145529
 
-From the C 2011 standard, 6.6, Constant Expressions: “An integer constant expression shall have integer type and shall only have operands that are integer constants, enumeration constants, character constants, sizeof expressions whose results are integer constants, _Alignof expressions, and floating constants that are the immediate operands of casts. Cast operators in an integer constant expression shall only convert arithmetic types to integer types, except as part of an operand to the sizeof or _Alignof operator.”
+From the C 2011 standard, 6.6, Constant Expressions: “An integer constant expression shall have integer type and shall only have operands that are integer constants, enumeration constants, character constants, sizeof expressions whose results are integer constants, \_Alignof expressions, and floating constants that are the immediate operands of casts. Cast operators in an integer constant expression shall only convert arithmetic types to integer types, except as part of an operand to the sizeof or \_Alignof operator.”
 
 什么是 static arrays，integer constant expression的定义在哪里？
-
 
 ### libc、glibc、glib
 
@@ -24,12 +23,11 @@ getconf GNU_LIBC_VERSION
 ldd --veresion
 ```
 
-libc、glib、glibc简介：https://www.cnblogs.com/arci/p/14591030.html
+libc、glibc、glib简介：https://www.cnblogs.com/arci/p/14591030.html
 
 glibc安装位置在哪里，系统自带的？这三个库的区别搞清楚
 
-libc和glibc是同一类东西，他们之间的关系可以在 `man glibc` 中查看，里面讲的非常清楚，目前主流linux发行版用的c标准库都是glibc，通过 `whereis libc.so.6` 命令查看glibc库的位置。glibc是c语言第三方的轮子库，提供动态列表、链表、n叉数等工具。
-
+libc和glibc是同一类东西，他们之间的关系可以在 `man glibc` 中查看，里面讲的非常清楚，目前主流linux发行版用的c标准库都是glibc，通过 `whereis libc.so.6` 命令查看glibc库的位置。glib是c语言第三方的轮子库，提供动态列表、链表、n叉数等工具。
 
 ## git实用命令拓展
 
@@ -72,7 +70,6 @@ git submodule update  # 获取子项目远程最新的状态
 
 git是支持多个.gitignore配置的，子目录中的.gitignore配置负责该子目录中的忽略规则。
 
-
 git 创建新的空分支
 
 ```bash
@@ -81,7 +78,6 @@ git rm -rf .
 git commit --allow-empty
 ```
 
-
 ## shell
 
 ### 认识[shebang](https://en.wikipedia.org/wiki/Shebang_(Unix))
@@ -89,7 +85,6 @@ git commit --allow-empty
 推荐使用 `env` 来增加可移植性：`#!/usr/bin/env python3`
 
 不过，在zsh的实际使用中，shebang并不能完全确保生效
-
 
 [The difference between test, \[ and \[\[](http://mywiki.wooledge.org/BashFAQ/031)
 
@@ -104,13 +99,11 @@ sudo apt install fd-find
 # alias fd="/usr/bin/fdfind"
 ```
 
-
 终于用上了tldr，推荐通过python的pip来安装（因为我不用npm）。
 
 安装完成后可以执行 `tldr -u` 命令将常用的命令帮助缓存在本机。
 
 由于网络问题，可能需要反复多执行几次。
-
 
 ### script 调用
 
@@ -120,12 +113,10 @@ sudo apt install fd-find
 - exec 执行指定的任务，任务执行完成后直接退出，不再执行调用者后续的任务
 - source 相当于合并任务到同一个进程中运行
 
-
 ## toml格式
 
 - [TOML 官方文档（汉化）](https://github.com/LongTengDao/TOML/blob/%E9%BE%99%E8%85%BE%E9%81%93-%E8%AF%91/toml-v1.0.0.md)
 - [TOML 中文教程](https://github.com/LongTengDao/TOML/wiki)
-
 
 ## RTFSC
 
@@ -149,22 +140,24 @@ Q: 补充一个之前一直感到疑惑的点，明明已经有optstring用来�
 
 A: optstring只控制短参数项的行为，longopts只控制长参数项的行为。getopt_long是否接受参数通过struct option的第2项成员来控制，返回值通过struct option的第4项成员来控制。
 
+补充一个实用的技巧：如果optstring以'-'开头，则可以接受“非选项参数”，他的返回结果是 code 1.
+If the first character of optstring is '-', then each nonoption argv-element is handled as if it were the argument of an option with character code 1. (This is used by programs that were written to expect options and other argv-elements in any order and that care about the ordering of the two.)
+
 ### constructor & destructor
 
 首先需要区分一下 `ANSI C` 和 `GNU C`，`ANSI C` 是C语言的一个标准，定义了C语言的语法规则，
 `GNU C` 在 `ANSI C` 的基础上增加了一些额外的拓展特性，`GNU C` 一般只在Linux环境下使用。
 
-- [What is the difference between C, C99, ANSI C and GNU C?
-Ask Question](https://stackoverflow.com/questions/17206568/what-is-the-difference-between-c-c99-ansi-c-and-gnu-c)
+- [What is the difference between C, C99, ANSI C and GNU C? Ask Question](https://stackoverflow.com/questions/17206568/what-is-the-difference-between-c-c99-ansi-c-and-gnu-c)
 - [ANSI C标准 vs GNU C标准](https://blog.51cto.com/u_13933750/3229763)
 
 [Attributes of Functions](https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html#Function-Attributes) 就是 `GNU C` 支持的拓展语法之一。
 因此，想要弄清楚 constructor 和 destructor 还得去看GNU C的[手册](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#Common-Function-Attributes)。
 
-> GCC also supports attributes on variable declarations (see Variable Attributes), 
-labels (see Label Attributes), enumerators (see Enumerator Attributes), 
-statements (see Statement Attributes), types (see Type Attributes), 
-and on field declarations (for tainted_args).
+> GCC also supports attributes on variable declarations (see Variable Attributes),
+> labels (see Label Attributes), enumerators (see Enumerator Attributes),
+> statements (see Statement Attributes), types (see Type Attributes),
+> and on field declarations (for tainted_args).
 
 ```c
 #include <stdio.h>
@@ -186,13 +179,13 @@ void __attribute__((destructor)) last() {
 # main function
 # last
 ```
+
 如果有多个constructor或destructor，可以给每个constructor或destructor赋予优先级，
 对于constructor，优先级数值越小，运行越早（优先级 0 到 100 为实现所保留，所以最小为101）。
 destructor则相反，优先级数值越小，运行越晚（优先级 0 到 100 为实现所保留，所以最小为101）。
 
-因此 `main` 方法并不是程序执行的开始/结束，程序启动时调用的第一个方法是 
+因此 `main` 方法并不是程序执行的开始/结束，程序启动时调用的第一个方法是
 [`_start` 方法](http://wen00072.github.io/blog/2015/02/14/main-linux-whos-going-to-call-in-c-language/)（可以通过断点调试查看函数调用栈验证）。
-
 
 ### exit
 
@@ -209,18 +202,16 @@ destructor则相反，优先级数值越小，运行越晚（优先级 0 到 100
 `exit`, `_exit`, `return`, `abort`
 
 - `exit`: 此函数由 `ANSI C` 定义，调用时会做大部分清理工作，但不会销毁局部对象，因为没有stack unwinding。
-会进行的清理工作包括：销毁所有static和global对象，清空所有缓冲区，关闭所有I／O通道。
+  会进行的清理工作包括：销毁所有static和global对象，清空所有缓冲区，关闭所有I／O通道。
 - `_exit`: 是一个系统调用，其效果等同于 `syscall(SYS_exit, 1)`，不会执行注册的hook退出函数
 - `return`: 调用时进行stack unwinding，调用局部对象析构函数清理局部对象。如果在main中，则之后再交由系统调用exit()
 - `abort`: 调用时不进行任何清理工作，直接终止程序，并产生 `SIGABRT` 信号。
-
 
 ### pmem映射
 
 nemu中用pmem来代表内存，访问内存时涉及到 paddr_read/write 和 vaddr_read/write 两组函数，两者一个代表物理地址，一个代表虚拟地址，其中vaddr仅仅是paddr多一层的封装。
 
 除了逻辑层面的区别以外，暂时看不出单独封装一层vaddr有什么特别的意义，也许以后会找到答案。
-
 
 ### 宏工具
 
@@ -273,7 +264,6 @@ __IGNORE(init_device());
 
 妙在 `#define __P_DEF_1 X,` ，`X` 只是一个占位符，改用其他符号也没有影响，需要注意的是 `X` 后面的逗号，如果成功宏替换得到了 `__P_DEF_1`，就相当于增加了一个空的参数，用来充当 `MUX_WITH_COMMA` 第二个参数的替死鬼。
 
-
 ## 基础设施
 
 ### 字符串转数字
@@ -287,18 +277,17 @@ atoi, atol, atoll  // 是上面一行的简化版
 scanf, sscanf  // 可以理解为是逆向版的printf
 
 #include <string.h>
-strtok  // 原地切分字符串，会把当前tocken后面的一个字符用`\0`替换
+strtok  // 原地切分字符串，会把当前token后面的一个字符用`\0`替换
 strtok_r  // 线程安全版strtok，需要单独传入一个指针用来维护切分位置
 
 #include <errno.h>
 // 定义常用的错误api，比如errno、perror
 ```
 
-[char * 与char []区别总结](https://blog.csdn.net/bitcarmanlee/article/details/124166842)，简而言之就是，一个是常量指针，一个是指针常量。
+[char \* 与char []区别总结](https://blog.csdn.net/bitcarmanlee/article/details/124166842)，简而言之就是，一个是常量指针，一个是指针常量。
 
 在做 `基础设施` 章节的时候会用到很多字符串处理的函数，其中以 strtok 和 scanf 为主，在选择这两个函数时总是很纠结，
-strtok 能够处理空字符串，scanf 必须提前过滤掉空字符串。如果不太考虑性能的话，其实先用 strtok 获取tocken，然后用scanf解析tocken逻辑会更清晰。
-
+strtok 能够处理空字符串，scanf 必须提前过滤掉空字符串。如果不太考虑性能的话，其实先用 strtok 获取token，然后用scanf解析token逻辑会更清晰。
 
 ### si / info r / x
 
@@ -314,7 +303,6 @@ strtok 能够处理空字符串，scanf 必须提前过滤掉空字符串。如�
 > NEMU默认会把单步执行的指令打印出来(这里面埋了一些坑, 你需要RTFSC看看指令是在哪里被打印的), 这样你就可以验证单步执行的效果了.
 
 2021版pa在这里的坑应该是指si单步执行指令时打印的内存数据没有考虑小端序，但是2022版的pa好像把这个坑取消掉了，暂时没有发现其他坑。
-
 
 ## 表达式求值
 
@@ -369,7 +357,7 @@ gdb 对上述表达式求值结果为0，而我个人目前实现的是第二种
 
 为什么会出现这种差异？明明无符号数和有符号数的二进制表示都是一样的。因为有符号和无符号整数乘、除法的实现不同。
 
-- 乘法：若两数同号，有/无符号乘法得到的二进制结果总是相同，若两数异号，由于高32位用符号为补位，有符号数和无符号数计算得到的高32位不同，低32位总是相同。无论是否同号，截断后二进制总是相同。
+- 乘法：若两数同号，有/无符号乘法得到的二进制结果总是相同，若两数异号，由于高32位用符号位补位，有符号数和无符号数计算得到的高32位不同，低32位总是相同。无论是否同号，截断后二进制总是相同。
 - 除法：无符号数、带符号正整数(地板):移出的低位直接丢弃；带符号负整数(天板):加偏移量(2^k-1)，然后再右移k 位 ，低位截断(这里K 是右移位数)
 
 故，在生成表达式测试用例时，如果希望使用第二种理解方式，就需要在每一个数字后面加上一个 `u` 字符（表达式解析对应的位置也需要改）。
@@ -431,6 +419,7 @@ $ gcc tmp.c -o tmp && ./tmp
 ulimit -c 1000  # 设置生成core文件最多1000 Byte
 ulimit -c unlimited  # 设置不限制生成core文件的大小
 ```
+
 简单实用core file
 
 ```bash
@@ -473,7 +462,7 @@ gdb -c <core file>
 如果需要统计仅 .c, .h 文件：
 
 ```bash
-# nemu/目录下的所有.c和.h和文件总共有多少行代码? 
+# nemu/目录下的所有.c和.h和文件总共有多少行代码?
 cat $(find $NEMU_HOME -name "*.c" -o -name "*.h") | wc -l
 # 除去空行之外, nemu/目录下的所有.c和.h文件总共有多少行代码?
 cat $(find $NEMU_HOME -name "*.c" -o -name "*.h") | grep -v '^$' | wc -l
@@ -481,5 +470,3 @@ cat $(find $NEMU_HOME -name "*.c" -o -name "*.h") | grep -v '^$' | wc -l
 git diff pa0 -- $(find $NEMU_HOME -name "*.c" -o -name "*.h") | grep -E '^(\+|\-)' | grep -vE '^(\-{3}|\+{3})' | wc -l
 # GNU 的 grep 工具不支持 `(?!expr)` 负向预查表达式，这里只好过滤两次
 ```
-
-
