@@ -8,6 +8,7 @@
 操作系统和其它用户程序还是不太一样的: 一个用户程序出错了, 操作系统可以运行下一个用户程序; 但如果操作系统崩溃了, 整个计算机系统都将无法工作. 所以, 人们还是希望能把操作系统保护起来, 尽量保证它可以正确工作. 在这个需求面前, 用call/jal指令来进行操作系统和用户进程之间的切换就显得太随意了.
 
 为了阻止程序将执行流切换到操作系统的任意位置, 硬件中逐渐出现保护机制相关的功能, 比如
+
 - i386中引入了保护模式(protected mode)和特权级(privilege level)的概念
 - mips32处理器可以运行在内核模式和用户模式
 - riscv32则有机器模式(M-mode), 监控者模式(S-mode)和用户模式(U-mode)
@@ -56,7 +57,7 @@ typedef struct Event {
 init_irq → cte_init → asm volatile("csrw mtvec, %0" : : "r"(__am_asm_trap)); → user_handler=do_event
 
 // trap
-yield → ecall → isa_raise_intr → csr[MTVEC] → __am_asm_trap(trap.S) → __am_irq_handle → user_handler
+yield → ecall → isa_raise_intr → s->dnpc=csr[MTVEC] → __am_asm_trap/trap.S → __am_irq_handle → user_handler/do_event → get back to __am_asm_trap/trap.S → mret → next instruction
 ```
 
 #### cte initialization
@@ -141,16 +142,19 @@ Register information display as follows:
 
 到此，需要反问一下，为什么应该将 `mcause` 设置为 `0xb`？
 
+> ecall的功能：The ECALL instruction is used to make a request to the supporting execution environment. When executed in U-mode, S-mode, or M-mode, it generates an environment-call-from-U-mode exception, environment-call-from-S-mode exception, or environment-call-from-M-mode exception, respectively, and performs no other operation.
+
 此时需要阅读 `riscv-privileged` 的 `3.1.15 Machine Cause Register (mcause)` 章节，通过 `Table 3.6: Machine cause register (mcause) values after trap` 可以解答上述问题。
 
 > 谈一谈中断和异常
+>
 > - 中断(Interrupt)机制,即处理器核在顺序执行程序指令流的过程中突然被别的请求打断而中止执行当前的程序,转而去处理别的事情,待其处理完了别的事情,然后重新回到之前程序中断的点继续执行之前的程序指令流。中断处理是一种正常的机制,而非一种错误情形。中断源通常来自于外围硬件设备,是一种外因。
 > - 异常(Exception)机制,即处理器核在顺序执行程序指令流的过程中突然遇到了异常的事情而中止执行当前的程序,转而去处理该异常。异常是由处理器内部事件或程序执行中的事件引起的, 譬如本身硬件故障、程序故障,或者执行特殊的系统服务指令而引起的,简而言之是一种内因。
 > - 中断和异常最大的区别是起因内外有别。除此之外,从本质上来讲,中断和异常对于处理器而言基本上是一个概念。处理器广义上的异常,通常只分为同步异常(Synchronous Exception)和异步异常(Asynchronous Exception) 。
 
 上述的 `yield` 指令属于"内因"，因此属于异常，而非中断（对应的 mcause 为 11，即 0xb，Environment call from M-mode）。
 
-#### __am_asm_trap
+#### \_\_am_asm_trap
 
 `__am_asm_trap` 函数在 `trap.S` 中定义，是异常入口函数，主要作用是为 `__am_irq_handle` 准备 `Context` 参数。
 
@@ -163,7 +167,7 @@ Context 需要保存的上下文信息包括：
 
 `__am_asm_trap` 通过将结构体的各成员属性依次压栈构造 `Context` 实参，注意压栈顺序与结构体成员的定义顺序相反，定义顺序靠前的成员分配在栈的低地址。据此重新组织abstract-machine/am/include/arch/$ISA-nemu.h 中定义的Context结构体的成员。
 
-#### __am_irq_handle
+#### \_\_am_irq_handle
 
 `__am_irq_handle` 的主要作用是事件分发，其本身很简单，值得讨论的是 `mret` 指令的实现。
 
@@ -188,4 +192,3 @@ INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   , R, s->dnpc = csr(MEPC
 为什么是在 `__am_irq_handle` 而不是 `user_handler` 中控制 `mepc` 寄存器的值呢？
 
 因为 `user_handler`/`do_event` 由 `nanos-lite` 框架提供，本身是isa无关的，`mepc` 寄存器仅存在于 risc-v 指令集中。
-

@@ -99,7 +99,11 @@ objcopy - copy and translate object files
 
 ### disassemble dummy elf
 
-在执行 `make ARCH=riscv32-nemu ALL=dummy run` 之后，build 目录下生成了 `dummy-riscv32-nemu.[elf|bin|txt]` 3个文件，其中 `.txt` 是 `dummy.c` 反汇编的结果，尝试弄清楚反汇编文件是怎么生成的。
+在 `am-kernels/tests/cpu-tests` 中执行 `make ARCH=riscv32-nemu ALL=dummy run` 之后，build 目录下生成了 `dummy-riscv32-nemu.[elf|bin|txt]` 3个文件，其中 `.txt` 是 `dummy.c` 反汇编的结果，尝试弄清楚反汇编文件是怎么生成的。
+
+在生成上述3个文件之前，首先构建了 `Makefile.dummy` 文件（include了 `${AM_HOME}/Makefile`），通过这个临时的makefile文件来构建目标文件，最后删除这个临时makefile文件（注意研究 `ALL` 参数）。
+
+另外，`ARCH` 这个参数是在 `${AM_HOME}/Makefile` 中使用的，pa1中单独运行nemu其实并不需要使用 `ARCH` 参数。
 
 ```txt
 /home/vbox/ics2022/am-kernels/tests/cpu-tests/build/dummy-riscv32-nemu.elf:     file format elf32-littleriscv
