@@ -30,19 +30,29 @@ cpu_exec
 
 在折腾 ELF 之前，先明确一下什么是 目标文件 [object file](https://en.wikipedia.org/wiki/Object_file).
 
-> An object file is *a computer file containing object code, that is, machine code output of an assembler or compiler*. The object code is usually relocatable, and **not usually directly executable**. There are various formats for object files, and the same machine code can be packaged in different object file formats. An object file may also work like a shared library.
-
-注意区别 "目标文件" 和 "可执行文件"。
+> An **object file** is *a computer file containing **object code**, that is, machine code output of an assembler or compiler*. The object code is usually relocatable, and **not usually directly executable**. There are various formats for object files, and the same machine code can be packaged in different object file formats. An object file may also work like a shared library.
 
 > In addition to the object code itself, object files may contain metadata used for linking or debugging, including: information to resolve symbolic cross-references between different modules, relocation information, stack unwinding information, comments, program symbols, debugging or profiling information. Other metadata may include the date and time of compilation, the compiler name and version, and other identifying information.
 
-> A computer programmer generates object code with a compiler or assembler. For example,
-> **under Linux**, the GNU Compiler Collection compiler will generate files with a `.o` extension which use the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
-> Compilation **on Windows** generates files with a `.obj` extension which use the [COFF](https://en.wikipedia.org/wiki/COFF) format.
-> **under macOS**, object files come with a `.o` extension which use the [Mach-O](https://en.wikipedia.org/wiki/Mach-O) format.
+> A computer programmer generates object code with a compiler or assembler.
+
 > A linker is then used to combine the object code into one executable program or library pulling in precompiled system libraries as needed.
 
-并不是说 ELF 格式的文件都是用 `.o` 作为后缀，只是说 ELF 格式的 object file 一般以 `.o` 作为后缀，其他os平台同理。
+三类目标文件
+
+- 可重定位目标文件（.o）：其代码和数据地址都从0开始，可和其他可重定位文件合并为可执行文件
+- 可执行目标文件（.out）：包含的代码和数据地址为虚拟地址空间中的地址，可以直接被复制到内存中执行
+- 共享的目标文件（.so）：特殊的可重定位目标文件，能够在装入或者运行时被装入到内存并自动被链接，也称为共享库文件
+
+标准的几种目标文件格式
+
+– DOS操作系统(最简单)：COM格式，文件中仅包含代码和数据，且被加载到固定位置
+– System V UNIX早期版本：[COFF](https://en.wikipedia.org/wiki/COFF)格式，文件中不仅包含代码和数据，还包含重定位信息、调试信息、符号表等其他信息，由一组严格定 义的数据结构序列组成
+– Windows：PE格式(COFF的变种)，称为可移植可执行(Portable Executable，简称PE)
+– Linux等类UNIX：[ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format)格式(COFF的变种)，称为可执行可链接(Executable and Linkable Format，简称ELF)
+- MacOS：也是类UNIX系统，使用 [Mach-O](https://en.wikipedia.org/wiki/Mach-O) 自有格式
+
+并不是说 ELF 格式的文件都是用 `.o` 作为后缀，只是说 ELF 格式的可重定位目标文件一般以 `.o` 作为后缀，其他os平台同理。
 
 ### objdump
 
@@ -50,6 +60,7 @@ objdump - display information from object files.
 
 ```bash
 objdump -d : disassemble sections which are expected to contain instructions.
+        -t : display the contents of the symbol table(s).
         -s : display the full contents of any sections requested.
         -j name : display information only for section name.
 
@@ -578,6 +589,71 @@ In the above, link is true when the register is either x1 or x5.
 > 解析ELF文件
 
 这个说来就话长了，还是 `man 5 elf` 吧。值得注意的一点是，一个elf文件中可能包含多个字符串表，当找到符号表之后，应该根据符号表对应的节头表项的link属性来确定相应的字符串表是哪一个。
+
+elf文件必须要掌握的3大件：
+
+- ELF头（ELF Header）
+- ELF节头表（ELF Section Header Table）
+- ELF程序头表/段头表（ELF Program/Segment Header Table）
+
+节头表和程序头表代表从链接和执行两个视角来看待ELF文件，可重定位ELF文件如果失去了节头表，就会失去被链接的功能，可执行ELF文件如果失去了节头表，则无法查看ELF文件内符号等大部分信息，但不会影响执行功能（因为程序头表还在），动态链接库则同时需要节头表和程序头表。
+
+```c
+The elf header has the following structure:
+        #define EI_NIDENT 16
+        typedef struct {
+            unsigned char e_ident[EI_NIDENT];  // 标识ELF对象的16字节数组，始终以“\x7fELF”开头
+            uint16_t      e_type;      // 指定该ELF文件是可执行文件、可重定位或者其他类型
+            uint16_t      e_machine;   // 该ELF文件使用或运行的目标架构
+            uint32_t      e_version;   // 使用的ELF版本
+            Elf32_Addr    e_entry;     // 若为可执行文件，则为程序的虚拟地址入口
+            Elf32_Off     e_phoff;     // 表示程序头表中首个程序头对于该文件的偏移量，单位字节
+            Elf32_Off     e_shoff;     // 表示节头表中首个节头对于该文件的偏移量，单位字节
+            uint32_t      e_flags;     // 与处理器相关的一些标志
+            uint16_t      e_ehsize;    // ELF文件头大小，单位字节
+            uint16_t      e_phentsize; // 单个程序头的大小，单位字节
+            uint16_t      e_phnum;     // 程序头的数量
+            uint16_t      e_shentsize; // 单个节头的大小，单位字节
+            uint16_t      e_shnum;     // 节头的数量
+            uint16_t      e_shstrndx;  // 存放每个节头表项名称关联的字符串表索引
+        } Elf32_Ehdr;
+
+The section header has the following structure:
+        typedef struct {
+            uint32_t      sh_name;     // 节名称字符串基于ELF头中e_shstrndx字段指定节的偏移值
+            uint32_t      sh_type;     // 节的类型
+            uint32_t      sh_flags;    // 节的操作属性，可读可写可执行等
+            Elf32_Addr    sh_addr;     // 该节第一个字节在进程空间的虚拟地址
+            Elf32_Off     sh_offset;   // 节数据内容第一个字节基于该ELF文件的偏移量
+            uint32_t      sh_size;     // 该节数据内容长度，单位字节
+            uint32_t      sh_link;     // 与该节类型相关的另一个节的节头索引，比如对于类型为SHT_SYMTAB，SHT_DYNSYM的节，该项表示该节相关联的字符串表节的节头索引
+            uint32_t      sh_info;     // 其他额外信息
+            uint32_t      sh_addralign;// 若该节的内容为代码，则包含与对齐相关的信息
+            uint32_t      sh_entsize;  // 某些节中包含固定大小的项目，如符号表
+        } Elf32_Shdr;
+
+The program header has the following structure:
+        typedef struct {
+            uint32_t      p_type;      // 段的类型
+            Elf32_Off     p_offset;    // 段数据内容第一个字节基于该ELF文件的偏移量
+            Elf32_Addr    p_vaddr;     // 段数据内容第一个字节在进程空间所处的虚拟地址
+            Elf32_Addr    p_paddr;     // 该段数据内容第一个字节在进程空间所处的物理地址，在BSD中一般用不到且必须为0
+            uint32_t      p_filesz;    // 该段在磁盘中占用的大小，单位字节
+            uint32_t      p_memsz;     // 该段在内存中占用的大小，单位字节（.bss段只占用内存空间而不占用磁盘空间）
+            uint32_t      p_flags;     // 段的操作属性，可读可写可执行等
+            uint32_t      p_align;     // 段内存对齐量
+        } Elf32_Phdr;
+
+The symbol header has the following structure:
+        typedef struct {
+             uint32_t      st_name;    // 符号名称对应的偏移量，符号名可通过所属st_shndx节的sh_link字段值在字符串节进行偏移得到
+             Elf32_Addr    st_value;   // 与该符号相关联的值，存放的都是该符号数据内容的偏移或地址等信息
+             uint32_t      st_size;    // 该符号数据的尺寸数据
+             unsigned char st_info;    // 指定符号的类型和绑定属性，分为BIND和TYPE两种信息组合得到
+             unsigned char st_other;   // 定义符号的可见性
+             uint16_t      st_shndx;   // 存放该符号描述所属的节的节头索引
+         } Elf32_Sym;
+```
 
 还获得了一些乱七八糟的知识，
 - `_start` 符号表项的 size 值为0，比较特别
