@@ -33,6 +33,12 @@ void isa_reg_display() {
   }
   printf(pattern, "pc", cpu.pc);
   printf("\n");
+
+  // csr display
+  printf(pattern, "mstatus", csr(MSTATUS)); printf("\n");
+  printf(pattern, "mtvec", csr(MTVEC)); printf("\n");
+  printf(pattern, "mepc", csr(MEPC)); printf("\n");
+  printf(pattern, "mcause", csr(MCAUSE)); printf("\n");
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {

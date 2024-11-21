@@ -65,7 +65,7 @@ word_t paddr_read(paddr_t addr, int len) {
 }
 
 void paddr_write(paddr_t addr, int len, word_t data) {
-  IFDEF(CONFIG_MTRACE, Log("[MTRACE-W] write to memory " FMT_PADDR " at pc = " FMT_WORD " with data `" FMT_WORD "`", addr, data, cpu.pc));
+  IFDEF(CONFIG_MTRACE, if(MTRACE_COND) Log("[MTRACE-W] write to memory " FMT_PADDR " at pc = " FMT_WORD " with data `" FMT_WORD "`", addr, cpu.pc, data));
   if (likely(in_pmem(addr))) { pmem_write(addr, len, data); return; }
   IFDEF(CONFIG_DEVICE, mmio_write(addr, len, data); return);
   out_of_bound(addr);

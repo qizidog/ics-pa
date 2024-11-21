@@ -121,7 +121,8 @@ static int decode_exec(Decode *s) {
   // Memory Ordering Instructions
 
   // Environment Call and Breakpoints
-  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , I, IFDEF(CONFIG_ETRACE, Log("[ETRACE] ecall at pc = " FMT_WORD " with NO = %#x", s->pc, 0xb)); s->dnpc = isa_raise_intr(0xb, s->pc));  // 0xb Environment call from M-mode
+  #define INVOKE_ETRACE() IFDEF(CONFIG_ETRACE, Log("[ETRACE] ecall at pc = " FMT_WORD " with NO = %#x", s->pc, R(17)))
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , I, INVOKE_ETRACE(); s->dnpc = isa_raise_intr(R(17), s->pc));
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak , I, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
 
   // “M” Standard Extension for Integer Multiplication and Division
