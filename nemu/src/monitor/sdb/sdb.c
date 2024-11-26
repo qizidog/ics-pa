@@ -20,6 +20,10 @@
 #include "memory/paddr.h"
 #include "memory/vaddr.h"
 #include "sdb.h"
+#ifdef CONFIG_DIFFTEST
+#include <difftest-def.h>
+#include "cpu/difftest.h"
+#endif
 
 static int is_batch_mode = false;
 static int is_test_expr = false;
@@ -81,10 +85,19 @@ static int cmd_info(char *args) {
     printf("List of info subcommands:\n");
     printf("\tinfo r --  List of integer registers and their contents, for selected stack frame.\n");
     printf("\tinfo w --  Status of specified watchpoints (all watchpoints if no argument).\n");
+#ifdef CONFIG_DIFFTEST
+    printf("\tinfo rr --  List of reference integer registers and their contents, for selected stack frame.\n");
+#endif
   } else if (!strcmp(scmd, "r")) {
-    isa_reg_display();
+    isa_reg_display(NULL);
   } else if (!strcmp(scmd, "w")) {
     info_watchpoints();
+#ifdef CONFIG_DIFFTEST
+  } else if (!strcmp(scmd, "rr")) {
+    CPU_state ref;
+    ref_difftest_regcpy(&ref, DIFFTEST_TO_DUT);
+    isa_reg_display(&ref);
+#endif
   } else {
     printf("Undefined info command: \"%s\".\n", scmd);
   }

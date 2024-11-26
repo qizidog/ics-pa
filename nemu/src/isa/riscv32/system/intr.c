@@ -21,11 +21,11 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
    */
 
   // 1. 将当前PC值保存到mepc寄存器
-  csr[MEPC] = epc;
+  cpu.mepc = epc;
   // 2. 在mcause寄存器中设置异常号
-  csr[MCAUSE] = NO;
+  cpu.mcause = NO;
   // 3. 从mtvec寄存器中取出异常入口地址
-  uint64_t trap_addr = csr[MTVEC];
+  uint64_t trap_addr = cpu.mtvec;
   // 4. 跳转到异常入口地址
   return trap_addr;
 }

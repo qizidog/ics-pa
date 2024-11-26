@@ -17,8 +17,25 @@
 #include <cpu/difftest.h>
 #include "../local-include/reg.h"
 
+#define CHECKDIFF(p) if (ref_r->p != cpu.p) { \
+  Warn("difftest fail at " #p ", expect %#x got %#x\n", ref_r->p, cpu.p); \
+  return false; \
+}
+#define CHECKDIFF_FMT(p, fmt, ...) if (ref_r->p != cpu.p) { \
+  Warn("difftest fail at " fmt ", expect %#x got %#x\n", ## __VA_ARGS__, ref_r->p, cpu.p); \
+  return false; \
+}
+
 bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc) {
-  return !memcmp(&cpu, ref_r, sizeof(CPU_state));
+  for (int i = 0; i < ARRLEN(cpu.gpr); i++) {
+    CHECKDIFF_FMT(gpr[i], "gpr[%d]", i);
+  }
+  CHECKDIFF(pc);
+  CHECKDIFF(mstatus.val);
+  CHECKDIFF(mcause);
+  CHECKDIFF(mepc);
+  CHECKDIFF(mtvec);
+  return true;
 }
 
 void isa_difftest_attach() {

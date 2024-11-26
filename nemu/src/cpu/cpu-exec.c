@@ -27,7 +27,6 @@
 #define MAX_INST_TO_PRINT 10
 
 CPU_state cpu = {};
-CSR_state csr;
 uint64_t g_nr_guest_inst = 0;
 static uint64_t g_timer = 0; // unit: us
 static bool g_print_step = false;
@@ -100,7 +99,7 @@ static void statistic() {
 
 void assert_fail_msg() {
   IFDEF(CONFIG_ITRACE, itrace_display());
-  isa_reg_display();
+  isa_reg_display(NULL);
   statistic();
 }
 

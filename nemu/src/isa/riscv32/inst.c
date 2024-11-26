@@ -23,6 +23,17 @@
 #define Mr vaddr_read
 #define Mw vaddr_write
 
+static word_t* csr_ref(uint32_t idx) {
+  switch (idx) {
+    case MSTATUS: return &cpu.mstatus.val;
+    case MTVEC: return &cpu.mtvec;
+    case MEPC: return &cpu.mepc;
+    case MCAUSE: return &cpu.mcause;
+    default: assert(0);
+  }
+}
+#define csr(i) *csr_ref(i)
+
 enum {
   TYPE_I, TYPE_U, TYPE_S,
   TYPE_R, TYPE_B, TYPE_J,

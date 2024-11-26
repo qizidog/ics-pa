@@ -23,22 +23,25 @@ const char *regs[] = {
   "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"
 };
 
-void isa_reg_display() {
+void isa_reg_display(CPU_state* ref) {
+  if (ref == NULL) ref = &cpu;
+  else printf("Reference ");
+  Assert(ref != NULL, "Reference to a Null pointer!");
+
   printf("Register information display as follows:\n");
   const char* pattern = "\t%-4s\t%-#12x";
   for (int i = 0; i < ARRLEN(regs); i++) {
-    printf(pattern, regs[i], gpr(i));
+    printf(pattern, regs[i], ref->gpr[check_reg_idx(i)]);
     if ((i & 1) == 1) printf("\n");
     else printf("|");
   }
-  printf(pattern, "pc", cpu.pc);
-  printf("\n");
+  printf(pattern, "pc", ref->pc); printf("\n");
 
   // csr display
-  printf(pattern, "mstatus", csr(MSTATUS)); printf("\n");
-  printf(pattern, "mtvec", csr(MTVEC)); printf("\n");
-  printf(pattern, "mepc", csr(MEPC)); printf("\n");
-  printf(pattern, "mcause", csr(MCAUSE)); printf("\n");
+  printf(pattern, "mstatus", ref->mstatus); printf("\t");
+  printf(pattern, "mtvec", ref->mtvec); printf("\n");
+  printf(pattern, "mepc", ref->mepc); printf("\t");
+  printf(pattern, "mcause", ref->mcause); printf("\n");
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
@@ -51,6 +54,22 @@ word_t isa_reg_str2val(const char *s, bool *success) {
   if (strcmp(s+1, "pc") == 0) {
     *success = true;
     return cpu.pc;
+  }
+  if (strcmp(s+1, "mstatus") == 0) {
+    *success = true;
+    return cpu.mstatus.val;
+  }
+  if (strcmp(s+1, "mtvec") == 0) {
+    *success = true;
+    return cpu.mtvec;
+  }
+  if (strcmp(s+1, "mepc") == 0) {
+    *success = true;
+    return cpu.mepc;
+  }
+  if (strcmp(s+1, "mcause") == 0) {
+    *success = true;
+    return cpu.mcause;
   }
   *success = false;
   printf("No register named `%s`.\n", s);
