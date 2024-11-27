@@ -9,6 +9,10 @@ ifeq ($(ARCH),native)
 ISA = am_native
 else
 INC_PATH += include $(NAVY_HOME)/libs/libc/include
+#NEW_LIBS := libc libos
+#LINKAGE += $(addsuffix -$(ISA).a, $(join \
+#    $(addsuffix /build/, $(addprefix $(NAVY_HOME)/libs/, $(NEW_LIBS))), \
+#    $(NEW_LIBS)))
 endif
 
 ./src/resources.S: $(RAMDISK_FILE)

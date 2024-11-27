@@ -192,3 +192,73 @@ INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   , R, s->dnpc = csr(MEPC
 为什么是在 `__am_irq_handle` 而不是 `user_handler` 中控制 `mepc` 寄存器的值呢？
 
 因为 `user_handler`/`do_event` 由 `nanos-lite` 框架提供，本身是isa无关的，`mepc` 寄存器仅存在于 risc-v 指令集中。
+
+## 用户程序加载
+
+> 加载用户程序是由loader(加载器)模块负责的, 加载的过程就是把可执行文件中的代码和数据放置在正确的内存位置, 然后跳转到程序入口, 程序就开始执行了.
+
+> 在实现loader的过程中, 需要找出每一个需要加载的segment的Offset, VirtAddr, FileSiz和MemSiz这些参数.
+> 其中相对文件偏移Offset指出相应segment的内容从ELF文件的第Offset字节开始, 在文件中的大小为FileSiz, 它需要被分配到以VirtAddr为首地址的虚拟内存位置, 在内存中它占用大小为MemSiz.
+> 也就是说, 这个segment使用的内存就是 [VirtAddr, VirtAddr + MemSiz) 这一连续区间, 然后将segment的内容从ELF文件中读入到这一内存区间, 并将 [VirtAddr + FileSiz, VirtAddr + MemSiz) 对应的物理区间清零.
+
+### api库的引入
+
+在加载用户程序的过程中，必然要解析elf文件，其实在pa2中实现ftrace的时候已经做过这个功能了，但是这里没办法直接使用，因为nanos运行在nemu上，有些当初在nemu中能使用的api（宿主机系统提供的），nemu并没有提供。
+
+又是一个折磨+融会贯通的过程：navy-apps中提供了newlib c库，正好可以用来解决nanos中没有对应api的问题！
+那么怎么才能在nanos中启用newlib c呢？那就需要RTFSC查看Makefile，并回顾可重定位目标文件的链接过程。
+
+顺便一说，abstract-machine 的 Makefile 中 `$(LIBS)` 和 `$(LINKAGE)` 两个变量具体是怎么产生的值得仔细研究。
+于是，选择在nanos的Makefile中增加对应的规则，将libc和libos两个库链接到nanos的elf文件中。至此，终于可以开始着手实现解析elf文件和加载用户程序的功能了。
+
+但是经过实测，还是不能在nanos中通过nemu直接读取ramdisk.img文件，反思发现是因为nemu只能够访问特定的内存区段，无法直接读取硬盘上任意位置的文件。
+
+思考ramdisk、nanos、am、klib、nemu的关系：nemu是模拟的cpu等硬件，其上提供am和klib等接口（其实也是跑在nemu上的程序）供上层应用程序使用，nanos是一个运行在nemu硬件上的特殊程序（特殊在可以加载ramdisk这样的普通应用程序）。实际上从编译过程来看，编译对象只分为两部分，一部分是nemu，另一部分是被打包编译到一起的ramdisk、nanos、am、klib，经打包处理成bin文件后可以被nemu执行。其中在编译构建时，`ramdisk.img` 可执行目标文件是作为数据直接通过 `resources.S` 嵌入到了nanos可执行目标文件的.data节中了。
+
+需要关注的几个文件：
+
+- $(NEMU_HOME)/src/memory/Kconfig: 定义nemu中内存的起始地址为0x80000000（不是宿主机中的地址）
+- $(AM_HOME)/scripts/linker.ld: 分配规划nemu中的内存使用总布局（声明并使用了_pmem_start）
+- $(AM_HOME)/scripts/platform/nemu.mk: 定义了_pmem_start=0x80000000
+- $(NANOS_HOME)/src/resources.S: 定义nanos中ramdisk.img被加载到.data节，其数据开始位置被定义为ramdisk_start
+- $(NAVY_HOME)/scripts/riscv32.mk: 定义dummy/ramdisk.img程序中代码段的起始地址text-segment为0x83000000
+
+经上述分析可以发现，其实ramdisk.img已经作为nanos的.data节数据被加载到nemu的内存中了，只是没有被当做可执行文件来执行，后续需要通过loader将其加载到nemu内存中恰当的位置来执行。
+
+那么怎么在nanos中找到.data中的ramdisk.img呢？其实在 `resources.S` 中已经打好了标记——`ramdisk_start`，甚至 `ramdisk.c` 中已经贴心的准备好了api（同时也意味着前面费尽心思引入newlib的库函数是徒劳的）。
+
+### 检测ELF文件
+
+#### 魔数检测
+
+其实在pa2实现ftrace的时候就已经实现过检查魔数（0x7f454c46）了，这次突然发现在 `elf.h` 中其实已经定义了一个魔数的宏 `ELFMAG`，可以直接使用。
+
+#### ISA类型检测
+
+AM中的ISA宏是在abstract-machine的Makefile中定义的。
+
+```Makefile
+CFLAGS   += -O2 -MMD -Wall -Werror $(INCFLAGS) \
+            -D__ISA__=\"$(ISA)\" -D__ISA_$(shell echo $(ISA) | tr a-z A-Z)__ \
+```
+
+ELF支持的ISA，可以查看 `elf.h` 中对 `e_machine` 字段的定义。
+
+### 正式加载
+
+其实剩下的部分和实现ftrace已经差不多了，甚至还要更简单些，不用处理字符串表。
+
+- 从ELF头中提取程序头表的数量和起始偏移位置
+- 逐个读取程序头表信息，根据程序段的类型、偏移位置、大小将其加载到内存指定位置
+- 注意内存尺寸大于文件尺寸的区域需要清零
+
+```c
+// 一句神奇的代码
+((void(*)())entry) ();
+```
+
+实现两个功能:
+
+1. 将entry强制转化成函数指针
+2. 程序跳转到绝对地址entry去执行
+
