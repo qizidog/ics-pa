@@ -292,6 +292,7 @@ A BRIEF STORY](https://www.tenouk.com/ModuleW.html)
 1. 将entry强制转化成函数指针
 2. 程序跳转到绝对地址entry去执行
 
+## syscall 系统调用
 
 ### csr difftest
 
@@ -323,7 +324,7 @@ A BRIEF STORY](https://www.tenouk.com/ModuleW.html)
 | 1  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  |
 ```
 
-目前没有搞定出spike总是使用11作为系统调用号应该怎样调整（虽然这是符合手册要求的），目前暂时选择使用 `difftest_skip_ref` 来跳过这一步的difftest比对（mret处也先用同样的方式跳过）。
+目前没有搞定spike总是使用11作为系统调用号应该怎样调整（虽然这是符合手册要求的），目前暂时选择使用 `difftest_skip_ref` 来跳过这一步的difftest比对（mret处也先用同样的方式跳过）。
 
 > RISC-V Linux为什么没有使用a0来传递系统调用号？
 
@@ -386,6 +387,53 @@ nemu, an, klib, nanos 总体来说应该是比较独立的项目，个人决定�
 #define INVOKE_STRACE(c) if (CONFIG_STRACE) Log("[STRACE] syscall " #c " with NO = %d", c)
 ```
 
+### write
 
+> 你需要在do_syscall()中识别出系统调用号是SYS_write之后, 检查fd的值, 如果fd是1或2(分别代表stdout和stderr), 则将buf为首地址的len字节输出到串口(使用putch()即可). 最后还要设置正确的返回值(参考man 2 write).
 
+```bash
+man 2 write
+# ---------------------------------------------------
+ssize_t write(int fd, const void *buf, size_t count);
 
+write() writes up to count bytes from the buffer starting at buf to the file referred to by the file descriptor fd.
+  - On success, the number of bytes written is returned.
+  - On error, -1 is returned, and errno is set to indicate the cause of the error.
+```
+
+> Navy中提供了一个hello测试程序(navy-apps/tests/hello), 它首先通过write()来输出一句话, 然后通过printf()来不断输出. 你需要实现write()系统调用, 然后把Nanos-lite上运行的用户程序切换成hello程序来运行.
+
+P.S. 在没实现下面的堆区管理前printf只会输出第一个字符，这是正常的。
+
+### sbrk
+
+> 在Navy的Newlib中, sbrk() -> _sbrk() -> SYS_brk -> sys_brk(), 工作逻辑如下:
+>
+> 1. program break一开始的位置位于_end
+> 2. 被调用时, 根据记录的program break位置和参数increment, 计算出新program break
+> 3. 通过SYS_brk系统调用来让操作系统设置新program break
+> 4. 若SYS_brk系统调用成功, 该系统调用会返回0, 此时更新之前记录的program break的位置, 并将旧program break的位置作为_sbrk()的返回值返回
+> 5. 若该系统调用失败, _sbrk()会返回-1
+
+重点是搞清楚sbrk和brk在成功和失败情况下的返回值分别是什么，不要搞混了。
+
+```bash
+man 2 sbrk
+# ---------------------------------------------------
+int brk(void *addr);
+void *sbrk(intptr_t increment);
+
+brk() sets the end of the data segment to the value specified by addr.
+  - On success, brk() returns zero.
+  - On error, -1 is returned, and errno is set to ENOMEM.
+sbrk() increments the program's data space by increment bytes.  Calling sbrk() with an increment of 0 can be used to find the current location of the program break.
+  - On  success, sbrk() returns the previous program break. (If the break was increased, then this value is a pointer to the start of the newly allocated memory).
+  - On error, (void *) -1 is returned, and errno is set to ENOMEM.
+
+man 3 end
+# ---------------------------------------------------
+The addresses of these symbols indicate the end of various program segments:
+  - etext  This is the first address past the end of the text segment (the program code).
+  - edata  This is the first address past the end of the initialized data segment.
+  - end    This is the first address past the end of the uninitialized data segment (also known as the BSS segment).
+```
