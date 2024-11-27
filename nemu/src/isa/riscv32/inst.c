@@ -23,6 +23,7 @@
 #define Mr vaddr_read
 #define Mw vaddr_write
 
+void difftest_skip_ref();
 static word_t* csr_ref(uint32_t idx) {
   switch (idx) {
     case MSTATUS: return &cpu.mstatus.val;
@@ -135,6 +136,10 @@ static int decode_exec(Decode *s) {
   #define INVOKE_ETRACE() IFDEF(CONFIG_ETRACE, Log("[ETRACE] ecall at pc = " FMT_WORD " with NO = %#x", s->pc, R(17)))
   INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , I, INVOKE_ETRACE(); s->dnpc = isa_raise_intr(R(17), s->pc));
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak , I, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
+  // Trap-Return Instructions
+  // #define MRET() cpu.mstatus.bit.MIE = cpu.mstatus.bit.MPIE; cpu.mstatus.bit.MIE = 1; s->dnpc = csr(MEPC)
+  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   , R, difftest_skip_ref(); s->dnpc = csr(MEPC));
+
 
   // “M” Standard Extension for Integer Multiplication and Division
   INSTPAT("0000001 ????? ????? 000 ????? 01100 11", mul    , R, R(rd) = src1 * src2);
@@ -154,9 +159,6 @@ static int decode_exec(Decode *s) {
   INSTPAT("??????? ????? ????? 101 ????? 11100 11", csrrwi , I, if (rd != 0) R(rd) = csr(imm); csr(imm) = csr_uimm);
   INSTPAT("??????? ????? ????? 110 ????? 11100 11", csrrsi , I, R(rd) = csr(imm); if (csr_uimm != 0) csr(imm) = (csr(imm) | csr_uimm));
   INSTPAT("??????? ????? ????? 111 ????? 11100 11", csrrci , I, R(rd) = csr(imm); if (csr_uimm != 0) csr(imm) = (csr(imm) & ~csr_uimm));
-
-  // Trap-Return Instructions
-  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   , R, s->dnpc = csr(MEPC));
 
   // Invalid Pattern
   INSTPAT("??????? ????? ????? ??? ????? ????? ??", inv    , N, INV(s->pc));

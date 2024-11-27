@@ -57,7 +57,35 @@ typedef struct Event {
 init_irq → cte_init → asm volatile("csrw mtvec, %0" : : "r"(__am_asm_trap)); → user_handler=do_event
 
 // trap
-yield → ecall → isa_raise_intr → s->dnpc=csr[MTVEC] → __am_asm_trap/trap.S → __am_irq_handle → user_handler/do_event → get back to __am_asm_trap/trap.S → mret → next instruction
+yield → ecall → isa_raise_intr(NO, epc) → s->dnpc=csr[MTVEC] → __am_asm_trap/trap.S → __am_irq_handle(Context*) → user_handler/do_event(Event, Context*) → get back to __am_asm_trap/trap.S → mret → next instruction
+```
+```text
+//  trap 流程
+-> nanos-lite[main.c] main()
+
+-----> abstact-machine[cte.c] yield()
+
+---------> nemu[inst.c] ecall
+
+-------------> nemu[intr.c] isa_raise_intr(NO, epc) // s->dnpc=csr[MTVEC]
+
+-----------------> abstract-machine[trap.S] __am_asm_trap // 保存上下文+异常处理+恢复上下文
+
+---------------------> abstract-machine[cte.c] __am_irq_handle(Contex*)
+
+-------------------------> nanos-lite[irq.c] do_event(Event, Context*)
+
+---------------------> abstract-machine[cte.c] __am_irq_handle(Context*)
+
+-----------------> abstract-machine[trap.S] __am_asm_trap
+
+// 经过mret之后pc值被还原为异常之前的pc值(或者由软件确认的是否+4的pc值)
+
+---------> nemu[intr.c] mret
+
+-----> abstact-machine[cte.c] yield()
+
+-> nanos-lite[main.c] main()
 ```
 
 #### cte initialization
@@ -261,4 +289,71 @@ ELF支持的ISA，可以查看 `elf.h` 中对 `e_machine` 字段的定义。
 
 1. 将entry强制转化成函数指针
 2. 程序跳转到绝对地址entry去执行
+
+### csr difftest
+
+> 实现loader后, 在init_proc()中调用naive_uload(NULL, NULL), 它会调用你实现的loader来加载第一个用户程序, 然后跳转到用户程序中执行. 如果你的实现正确, 你会看到执行dummy程序时在Nanos-lite中触发了一个未处理的4号事件. 这说明loader已经成功加载dummy, 并且成功地跳转到dummy中执行了. 关于未处理的事件, 我们会在下文进行说明.
+
+这里说的未处理的4号事件，其实是 `__am_irq_handle` 的默认分支 `default: ev.event = EVENT_ERROR; break;` 进入 `do_event` 后触发了  `default: panic("Unhandled event ID = %d", e.event);`。
+
+> 踩坑情况实录1：实现完load之后启动nemu并加载dummy，程序执行到最后就卡住没反应了，进入了未知死循环，这时log的重要性就体现出来了。默认情况下nume的日志只记录10000行指令，为了彻底排查问题产生原因，可以在menuconfig中把日志记录的上限设为 `-1`，确保所有的执行指令都被记录下来，然后合理利用正则过滤掉无价值信息，辅助分析。
+
+日志显示：
+- 总共调用了两次ecall（和nanos main方法中的yield没有关系，还没有执行到他）
+- 总共调用了两次mret，一次是syscall，一次是exit（这次出错，mret之后pc循环指向 0x830049d4: jal zero, 0）
+
+> 踩坑情况实录2：ecall 传递 mcause 系统调用号的矛盾，作为difftest的spike总是使用11作为系统调用号，`__syscall__` 使用1，yield使用-1。
+
+经历了无数折磨终于醒悟，没有完善difftest csr检测带来的麻烦。因为没有完善 `diff_set_regs` 和 `diff_get_regs` 方法，~~初始化时设置的 `mstatus = 0x1800` 没有被同步至spike~~（同步了），csr寄存器的差异总是要延迟至通用寄存器时才能体现。
+
+所以，完善csr相关的difftest，并且优化csr的结构设计，不再使用4096大小的数组来存储csr，而是直接将csr放到cpu的结构中，方便和difftest做比对。
+
+既然都到这一步了，就分析下设置 `mstatus = 0x1800` 的效果，实际上就是让MPP位值为11，其余位全为0，即机器模式的上一个特权级别为机器模式。
+
+```bash
+# mstatus
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
+| 31 | 30 | 29 | 28 | 27 | 26 | 25 | 24 | 23 | 22 | 21 | 20 | 19 | 18 | 17 | 16 |
+| 15 | 14 | 13 | 12 | 11 | 10 | 9  | 8  | 7  | 6  | 5  | 4  | 3  | 2  | 1  | 0  |
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
+| 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 1  |
+| 1  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  | 0  |
+```
+
+目前没有搞定出spike总是使用11作为系统调用号应该怎样调整（虽然这是符合手册要求的），目前暂时选择使用 `difftest_skip_ref` 来跳过这一步的difftest比对（mret处也先用同样的方式跳过）。
+
+> RISC-V Linux为什么没有使用a0来传递系统调用号？
+
+使用a7寄存器来传递系统调用号，a0一般用来传递函数调用的第一个参数。
+
+**man syscall**:
+
+```
+The first table lists the instruction used to transition to kernel mode.
+
+Arch/ABI    Instruction           System  Ret  Ret  Error    Notes
+                                  call #  val  val2
+───────────────────────────────────────────────────────────────────
+arm64       svc #0                w8      x0   x1   -
+i386        int $0x80             eax     eax  edx  -
+ia64        break 0x100000        r15     r8   r9   r10      1, 6
+mips        syscall               v0      v0   v1   a3       1, 6
+riscv       ecall                 a7      a0   a1   -
+x86-64      syscall               rax     rax  rdx  -        5
+
+
+The second table shows the registers used to pass the system call arguments.
+
+Arch/ABI      arg1  arg2  arg3  arg4  arg5  arg6  arg7  Notes
+──────────────────────────────────────────────────────────────
+alpha         a0    a1    a2    a3    a4    a5    -
+
+arm64         x0    x1    x2    x3    x4    x5    -
+i386          ebx   ecx   edx   esi   edi   ebp   -
+ia64          out0  out1  out2  out3  out4  out5  -
+mips/o32      a0    a1    a2    a3    -     -     -     1
+mips/n32,64   a0    a1    a2    a3    a4    a5    -
+riscv         a0    a1    a2    a3    a4    a5    -
+x86-64        rdi   rsi   rdx   r10   r8    r9    -
+```
 

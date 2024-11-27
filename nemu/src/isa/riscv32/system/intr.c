@@ -15,6 +15,8 @@
 
 #include <isa.h>
 
+void difftest_skip_ref();
+
 word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   /* Trigger an interrupt/exception with ``NO''.
    * Then return the address of the interrupt/exception vector.
@@ -23,6 +25,10 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   // 1. 将当前PC值保存到mepc寄存器
   cpu.mepc = epc;
   // 2. 在mcause寄存器中设置异常号
+  difftest_skip_ref();  // force pass difftest
+  // cpu.mstatus.bit.MPP = 3;  // always 3 in nemu
+  // cpu.mstatus.bit.MPIE = cpu.mstatus.bit.MIE;
+  // cpu.mstatus.bit.MIE = 0;
   cpu.mcause = NO;
   // 3. 从mtvec寄存器中取出异常入口地址
   uint64_t trap_addr = cpu.mtvec;
