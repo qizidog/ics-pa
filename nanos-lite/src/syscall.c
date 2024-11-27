@@ -1,6 +1,12 @@
 #include <common.h>
 #include "syscall.h"
 
+#ifndef CONFIG_STRACE
+# define CONFIG_STRACE 0
+#endif
+#define INVOKE_STRACE(c) if (CONFIG_STRACE) Log("[STRACE] syscall " #c " with NO = %d", c)
+#define SYS_CASE(sc) case SYS_##sc: INVOKE_STRACE(SYS_##sc); sys_##sc(c); break
+
 static void sys_exit(Context *c){
   halt(c->GPR2);
 }
@@ -15,8 +21,8 @@ void do_syscall(Context *c) {
   a[0] = c->GPR1;
 
   switch (a[0]) {
-    case SYS_exit : Log("syscall - SYS_EXIT"); sys_exit(c); break;
-    case SYS_yield : Log("syscall - SYS_YIELD"); sys_yield(c); break;
+    SYS_CASE(exit);
+    SYS_CASE(yield);
     default: panic("Unhandled syscall ID = %d", a[0]);
   }
 }

@@ -9,6 +9,7 @@ ifeq ($(ARCH),native)
 ISA = am_native
 else
 INC_PATH += include $(NAVY_HOME)/libs/libc/include
+INC_PATH += $(NEMU_HOME)/include/generated/
 #NEW_LIBS := libc libos
 #LINKAGE += $(addsuffix -$(ISA).a, $(join \
 #    $(addsuffix /build/, $(addprefix $(NAVY_HOME)/libs/, $(NEW_LIBS))), \

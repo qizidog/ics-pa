@@ -179,6 +179,11 @@ config ETRACE
   bool "Enable exception tracer"
   default n
 
+config STRACE
+  depends on TRACE && TARGET_NATIVE_ELF && ENGINE_INTERPRETER
+  bool "Enable syscall tracer"
+  default n
+
 config DIFFTEST
   depends on TARGET_NATIVE_ELF
   bool "Enable differential testing"

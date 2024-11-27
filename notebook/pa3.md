@@ -280,6 +280,8 @@ ELF支持的ISA，可以查看 `elf.h` 中对 `e_machine` 字段的定义。
 - 逐个读取程序头表信息，根据程序段的类型、偏移位置、大小将其加载到内存指定位置
 - 注意内存尺寸大于文件尺寸的区域需要清零
 
+参考阅读： [COMPILER, ASSEMBLER, LINKER AND LOADER:
+A BRIEF STORY](https://www.tenouk.com/ModuleW.html)
 ```c
 // 一句神奇的代码
 ((void(*)())entry) ();
@@ -289,6 +291,7 @@ ELF支持的ISA，可以查看 `elf.h` 中对 `e_machine` 字段的定义。
 
 1. 将entry强制转化成函数指针
 2. 程序跳转到绝对地址entry去执行
+
 
 ### csr difftest
 
@@ -356,4 +359,33 @@ mips/n32,64   a0    a1    a2    a3    a4    a5    -
 riscv         a0    a1    a2    a3    a4    a5    -
 x86-64        rdi   rsi   rdx   r10   r8    r9    -
 ```
+
+### 异常 & 中断
+
+– 异常（内部）trap：在CPU内部发生的意外事件或特殊事件，按发生原因分为硬故障中断和程序性中断两类
+  - 硬故障中断：如电源掉电、硬件线路故障等
+  - 程序性中断：执行某条指令时发生的“例外(Exception)”事件，如溢出、缺页、越界、越权、越级、非法指令、除数为0、堆/栈溢出、 访问超时、断点设置、单步、系统调用等
+
+– 中断（外部）：在CPU外部发生的特殊事件，通过“中断请求”信号向CPU请求处理
+  - 如实时钟、控制台、打印机缺纸、外设准备好、采样计时到、DMA传输结束等
+
+### strace
+
+在menuconfig中增加对应的配置即可，需要考虑的是如何在nanos中使用menuconfig中生成的宏定义。
+
+观察am和klib，均未使用过menuconfig生成的宏定义，那么主要的问题是“应不应该在nanos中引入”，而不是“怎样引入”。
+
+nemu, an, klib, nanos 总体来说应该是比较独立的项目，个人决定还是需要把 `autoconf.h` 引入到nanos中，这应该是相对较优的选择，但是直接将nemu中include下的全部头文件都引入吗？这可能不太合适，容易出现重复定义的问题。
+
+在仅引入 `autoconf.h` 的情况下，`IFDEF` 宏是无法使用的（被定义在了 `macro.h` 中），于是就有了下面这样的定义：
+
+```c
+#ifndef CONFIG_STRACE
+# define CONFIG_STRACE 0
+#endif
+#define INVOKE_STRACE(c) if (CONFIG_STRACE) Log("[STRACE] syscall " #c " with NO = %d", c)
+```
+
+
+
 
