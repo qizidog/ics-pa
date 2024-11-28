@@ -437,3 +437,43 @@ The addresses of these symbols indicate the end of various program segments:
   - edata  This is the first address past the end of the initialized data segment.
   - end    This is the first address past the end of the uninitialized data segment (also known as the BSS segment).
 ```
+
+> 如果你的实现正确, 你可以借助strace看到printf()不再是逐个字符地通过write()进行输出, 而是将格式化完毕的字符串通过一次性进行输出.
+
+再次遇到一个大坑，个人实现的sbrk总是只能逐个输出字符，debug过程中被两个问题困扰：
+
+1. 在`_sbrk`函数（navy）中`&_end`的值是`0x830068dc`，在`sys_brk`函数（nanos）中`&_end`的值是`0x8001c000`
+  - 第一反应是`_sbrk`中的值有问题，可能是类型转换造成的
+  - 反复碰壁后开始思考会不会两个函数中的`&_end`值都没有问题，那么应该以哪一个值作为堆地址
+2. 怎样修改`&_end`的值
+
+结果完全走偏了方向：
+
+1. `_sbrk`函数（navy）中`&_end`反应的是hello程序的堆地址，`sys_brk`函数（nanos）中`&_end`反应的是nemu/nanos系统的堆地址
+2. `&_end`的值是根本没法改变的，需要自己建立一个变量来维护堆地址
+
+看到网上有些帖子是用静态局部变量来维护堆地址的，值得借鉴。
+
+```c
+// 目前sys_brk函数里面只需要写个返回值就行了
+// 设置新地址由_sbrk完成了
+extern char _end;
+void *_sbrk(intptr_t increment) {
+  static char *prog_brk = &_end;
+  int ret_brk = _syscall_(SYS_brk, increment, 0, 0);
+  if (ret_brk == 0) {  // success
+    void *old_brk = prog_brk;
+    prog_brk += increment;
+    return (void*)old_brk;
+  } else if (ret_brk == -1) {  // failed
+    return (void*)-1;
+  }
+  assert(0);  // error
+}
+```
+
+
+
+
+
+

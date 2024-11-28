@@ -28,9 +28,7 @@ static void sys_write(Context *c){
 }
 
 static void sys_brk(Context *c){
-  extern char _end;
-  intptr_t addr = c->GPR2;
-  _end = addr;
+  // intptr_t incr = c->GPR2;
   c->GPRx = 0;
 }
 

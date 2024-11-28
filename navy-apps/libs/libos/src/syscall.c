@@ -65,14 +65,18 @@ int _write(int fd, void *buf, size_t count) {
   return _syscall_(SYS_write, fd, (intptr_t)buf, count);
 }
 
+extern char _end;
 void *_sbrk(intptr_t increment) {
-  extern char _end;
-  intptr_t old_brk = (intptr_t)&_end;
-  intptr_t new_brk = old_brk + increment;
-  int ret_brk = _syscall_(SYS_brk, new_brk, 0, 0);
-  if (ret_brk == 0) return (void *)old_brk;
-  else if (ret_brk == -1) return (void *)-1;
-  else assert(0);
+  static char *prog_brk = &_end;
+  int ret_brk = _syscall_(SYS_brk, increment, 0, 0);
+  if (ret_brk == 0) {  // success
+    void *old_brk = prog_brk;
+    prog_brk += increment;
+    return (void*)old_brk;
+  } else if (ret_brk == -1) {  // failed
+    return (void*)-1;
+  }
+  assert(0);  // error
 }
 
 int _read(int fd, void *buf, size_t count) {
