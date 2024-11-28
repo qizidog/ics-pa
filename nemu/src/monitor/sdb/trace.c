@@ -33,7 +33,8 @@ typedef struct ftrace_entry {  // TODO: implemented by linkedlist
 
 /* static FT_Entry *ft_head = NULL, *ft_tail = NULL; */
 
-static FT_Entry ftrace_pool[1024];
+#define FT_SIZE 1024
+static FT_Entry ftrace_pool[FT_SIZE];
 static uint32_t ftrace_size = 0;
 
 typedef MUXDEF(CONFIG_ISA64, Elf64_Ehdr, Elf32_Ehdr) Elf_Ehdr;
@@ -49,6 +50,7 @@ static void read_elf_head(Elf_Ehdr *elf_hdr, FILE *fp) {
   Assert(e_ident[0] == 0x7f && e_ident[1] == 0x45
          && e_ident[2] == 0x4c && e_ident[3] == 0x46,
          "ELF_ERROR: not a ELF file.");
+  Assert(elf_hdr->e_machine == EM_RISCV, "ELF_ERROR: not a risc-v ELF file.");
 }
 
 static void read_elf_shdr(Elf_Shdr *elf_shdr_tb, Elf_Ehdr *elf_hdr, FILE *fp) {
@@ -85,6 +87,7 @@ static void read_elf_sym(Elf_Shdr *elf_shdr, uint16_t shdr_nr, FILE *fp) {
         if (ELF64_ST_TYPE(sym.st_info) != STT_FUNC) continue;
 
         FT_Entry* ft_ent = &ftrace_pool[ftrace_size++];
+        Assert(ftrace_size < FT_SIZE, "ftrace_size larger than max value [%d] allowed.", FT_SIZE);
 
         if (sym.st_name == 0) {  // if the calue is zero, the symbol has no name
           strncpy(ft_ent->name, "NO_NAME", sizeof(ft_ent->name));
@@ -116,50 +119,52 @@ static void read_elf_sym(Elf_Shdr *elf_shdr, uint16_t shdr_nr, FILE *fp) {
   }
 }
 
-void init_ftrace(char *elf_trace_file) {
+void init_ftrace(char **elf_trace_file, uint32_t nr_elf) {
   if (elf_trace_file == NULL) {
     Warn("ftrace is enabled while no ELF file is provided!");
     return;
   }
 
-  FILE *elfp = fopen(elf_trace_file, "rb");
-  if (elfp == NULL) {
-    Warn("fail to open ftrace elf file %s.", elf_trace_file);
-    return;
+  for (uint32_t i = 0; i < nr_elf; i++) {
+    FILE *elfp = fopen(elf_trace_file[i], "rb");
+    if (elfp == NULL) {
+      Warn("fail to open ftrace elf file %s.", elf_trace_file[i]);
+      return;
+    }
+
+    Log("start initializing ftrace with elf file: %s.", elf_trace_file[i]);
+
+    // parse elf header
+    Elf_Ehdr elf_hdr;
+    read_elf_head(&elf_hdr, elfp);
+
+    // parse elf section header table
+    uint16_t shdr_nr = elf_hdr.e_shnum;
+    Elf_Shdr elf_shdr_tb[shdr_nr];
+    read_elf_shdr(elf_shdr_tb, &elf_hdr, elfp);
+
+    // print section header
+    /* int start = elf_shdr_tb[elf_hdr.e_shstrndx].sh_offset; */
+    /* char name[64]; */
+    /* printf("%-20s\ttype\toffset\tsize\tentry_size\tlink\n", "name"); */
+    /* for (int i = 0; i < shdr_nr; i++) { */
+    /*   Elf_Shdr e = elf_shdr_tb[i]; */
+    /*   fseek(elfp, start+e.sh_name, SEEK_SET); */
+    /*   Assert(EOF != fscanf(elfp, "%63s", name), "EOF occur"); */
+    /*   printf("%-20s\t%u\t%#x\t%#x\t%#x\t%#x\n", name, e.sh_type, e.sh_offset, e.sh_size, e.sh_entsize, e.sh_link); */
+    /* } */
+
+    // parse elf symbol table
+    read_elf_sym(elf_shdr_tb, shdr_nr, elfp);
+
+    // print function symbol
+    /* printf("%-20s\tstart\tsize\n", "func_name"); */
+    /* for (int i = 0; i < ftrace_size; i++) { */
+    /*   printf("%-20s\t%#x\t%#x\n", ftrace_pool[i].name, ftrace_pool[i].start, ftrace_pool[i].size); */
+    /* } */
+
+    fclose(elfp);
   }
-
-  Log("start initializing ftrace with elf file: %s.", elf_trace_file);
-
-  // parse elf header
-  Elf_Ehdr elf_hdr;
-  read_elf_head(&elf_hdr, elfp);
-
-  // parse elf section header table
-  uint16_t shdr_nr = elf_hdr.e_shnum;
-  Elf_Shdr elf_shdr_tb[shdr_nr];
-  read_elf_shdr(elf_shdr_tb, &elf_hdr, elfp);
-
-  // print section header
-  /* int start = elf_shdr_tb[elf_hdr.e_shstrndx].sh_offset; */
-  /* char name[64]; */
-  /* printf("%-20s\ttype\toffset\tsize\tentry_size\tlink\n", "name"); */
-  /* for (int i = 0; i < shdr_nr; i++) { */
-  /*   Elf_Shdr e = elf_shdr_tb[i]; */
-  /*   fseek(elfp, start+e.sh_name, SEEK_SET); */
-  /*   Assert(EOF != fscanf(elfp, "%63s", name), "EOF occur"); */
-  /*   printf("%-20s\t%u\t%#x\t%#x\t%#x\t%#x\n", name, e.sh_type, e.sh_offset, e.sh_size, e.sh_entsize, e.sh_link); */
-  /* } */
-
-  // parse elf symbol table
-  read_elf_sym(elf_shdr_tb, shdr_nr, elfp);
-
-  // print function symbol
-  /* printf("%-20s\tstart\tsize\n", "func_name"); */
-  /* for (int i = 0; i < ftrace_size; i++) { */
-  /*   printf("%-20s\t%#x\t%#x\n", ftrace_pool[i].name, ftrace_pool[i].start, ftrace_pool[i].size); */
-  /* } */
-
-  fclose(elfp);
 }
 
 static const char *ft_name(vaddr_t pc) {
@@ -215,5 +220,5 @@ void invoke_ftrace(Decode* s) {
 #undef LINK
 
 #else
-void init_ftrace(char *elf_trace_file) { }
+void init_ftrace(char **elf_trace_file, uint32_t nr_elf) { }
 #endif

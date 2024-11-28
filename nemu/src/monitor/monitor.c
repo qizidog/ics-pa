@@ -44,7 +44,9 @@ void sdb_set_test_expr();
 static char *log_file = NULL;
 static char *diff_so_file = NULL;
 static char *img_file = NULL;
-static char *elf_trace_file = NULL;
+#define NR_ELFS 10
+static uint32_t nr_elf = 0;
+static char *elf_trace_file[NR_ELFS];
 static int difftest_port = 1234;
 
 static long load_img() {
@@ -87,7 +89,7 @@ static int parse_args(int argc, char *argv[]) {
       case 'p': sscanf(optarg, "%d", &difftest_port); break;
       case 'l': log_file = optarg; break;
       case 'd': diff_so_file = optarg; break;
-      case 'e': elf_trace_file  = optarg; break;
+      case 'e': elf_trace_file[nr_elf++]  = optarg; Assert(nr_elf<NR_ELFS, "nr_elf larger than max value allowed."); break;
       case 'E': sdb_set_test_expr(); break;
       case 1: img_file = optarg; return 0;
       default:
@@ -130,7 +132,7 @@ void init_monitor(int argc, char *argv[]) {
   long img_size = load_img();
 
   /* Initialize function tracer */
-  init_ftrace(elf_trace_file);
+  init_ftrace(elf_trace_file, nr_elf);
 
   /* Initialize differential testing. */
   init_difftest(diff_so_file, img_size, difftest_port);
