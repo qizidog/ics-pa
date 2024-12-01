@@ -472,6 +472,52 @@ void *_sbrk(intptr_t increment) {
 }
 ```
 
+## 文件系统
+
+实现难度不大，主要是理清楚各组函数接口之间绕来绕去的调用关系。
+
+```c
+// 应用程序
+FILE *fopen( const char *filename, const char *mode );
+size_t fread( void *buffer, size_t size, size_t count, FILE *stream );
+size_t fwrite( const void *buffer, size_t size, size_t count, FILE *stream );
+int fclose( FILE *stream );
+int fseek( FILE *stream, long offset, int origin );
+
+// 系统调用：navy
+int open(const char *pathname, int flags, int mode);  // _open
+size_t read(int fd, void *buf, size_t len);           // _read
+size_t write(int fd, const void *buf, size_t len);    // _write
+int close(int fd);                                    // _close
+size_t lseek(int fd, size_t offset, int whence);      // _lseek
+
+// syscall.c：nanos
+static void sys_open(Context *c);
+static void sys_read(Context *c);
+static void sys_write(Context *c);
+static void sys_close(Context *c);
+static void sys_lseek(Context *c);
+
+// 文件系统：nanos
+int fs_open(const char *pathname, int flags, int mode);
+size_t fs_read(int fd, void *buf, size_t len);
+size_t fs_write(int fd, const void *buf, size_t len);
+size_t fs_lseek(int fd, size_t offset, int whence);
+int fs_close(int fd);
+
+// ramdisk.c：nanos
+size_t ramdisk_read(void *buf, size_t offset, size_t len);
+size_t ramdisk_write(const void *buf, size_t offset, size_t len);
+```
+
+> 最后你还需要在Nanos-lite和Navy的libos中添加相应的系统调用, 来调用相应的文件操作.
+
+调用逻辑关系为从上到下依次调用，全靠讲义一句提示来推断。
+
+
+
+
+
 
 
 

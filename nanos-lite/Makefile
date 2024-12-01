@@ -1,14 +1,14 @@
-#HAS_NAVY = 1
+HAS_NAVY = 1
 RAMDISK_FILE = build/ramdisk.img
 
 NAME = nanos-lite
 SRCS = $(shell find -L ./src/ -name "*.c" -o -name "*.cpp" -o -name "*.S")
 include $(AM_HOME)/Makefile
 
-ifeq ($(PLATFORM),nemu)
-  RAMDISK_ELF := $(CURDIR)/$(RAMDISK_FILE)
-  NEMUFLAGS += --elf $(RAMDISK_ELF)
-endif
+# ifeq ($(PLATFORM),nemu)
+#   RAMDISK_ELF := $(CURDIR)/$(RAMDISK_FILE)
+#   NEMUFLAGS += --elf $(RAMDISK_ELF)
+# endif
 
 ifeq ($(ARCH),native)
 ISA = am_native
