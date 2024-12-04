@@ -1,20 +1,19 @@
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <sys/time.h>
+
+int NDL_Init(uint32_t flags);
+extern uint32_t NDL_GetTicks();
 
 int main() {
-  struct timeval tv;
-  struct timezone tz;
-  time_t s = tv.tv_sec;
-  suseconds_t ms = tv.tv_usec;
+  NDL_Init(0);
+  uint32_t t1 = NDL_GetTicks();
+  uint32_t t2;
   while (1) {
-    assert(gettimeofday(&tv, &tz) == 0);
-    if ((s == tv.tv_sec && tv.tv_usec - ms >= 500000) ||
-        (s < tv.tv_sec &&
-         tv.tv_usec - ms + (tv.tv_sec - s) * 1000000 >= 500000)) {
-      s = tv.tv_sec;
-      ms = tv.tv_usec;
-      printf("[Get-Time] seconds: %ld, microseconds: %ld\n", s, ms);
+    t2 = NDL_GetTicks();
+    if (t2 - t1 >= 500) {
+      t1 = t2;
+      printf("[Get-Time] milliseconds: %d\n", t1);
     }
   }
 }

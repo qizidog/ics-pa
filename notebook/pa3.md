@@ -515,9 +515,17 @@ size_t ramdisk_write(const void *buf, size_t offset, size_t len);
 调用逻辑关系为从上到下依次调用，全靠讲义一句提示来推断。
 
 
+### gettimeofday
 
+> 实现gettimeofday系统调用, 这一系统调用的参数含义请RTFM. 实现后, 在navy-apps/tests/中新增一个timer-test测试, 在测试中通过gettimeofday()获取当前时间, 并每过0.5秒输出一句话.
 
+注意是作为系统调用来实现，总体实现不算复杂，主要在于需要调用pa2中实现的 `io_read(AM_TIMER_UPTIME)` 接口，好好回顾一下pa2的IOE是怎么实现的吧。
 
+> 在Navy中提供了一个叫NDL(NJU DirectMedia Layer)的多媒体库, 你需要用gettimeofday()实现NDL_GetTicks(), 然后修改timer-test测试, 让它通过调用NDL_GetTicks()来获取当前时间.
+
+NDL_GetTicks 效果类似于 `SDL_GetTicks -- Get the number of milliseconds since the SDL library initialization.`
+
+其实就是在NDL初始化时记录一个事件，在NDL_GetTicks中计算时间差，和nemu中计算程序运行时间同理。
 
 
 
