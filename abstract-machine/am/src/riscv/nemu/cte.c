@@ -6,7 +6,7 @@ static Context* (*user_handler)(Event, Context*) = NULL;
 
 Context* __am_irq_handle(Context *c) {
   if (user_handler) {
-    Event ev = {0};
+    Event ev = {0, c->mcause};
     switch (c->mcause) {
       case -1: ev.event = EVENT_YIELD; c->mepc += 4; break;
       default:

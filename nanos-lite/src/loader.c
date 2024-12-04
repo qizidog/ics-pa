@@ -71,7 +71,7 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
 }
 
 void naive_uload(PCB *pcb, const char *filename) {
-  uintptr_t entry = loader(pcb, "/bin/file-test");
+  uintptr_t entry = loader(pcb, "/bin/timer-test");
   Log("Jump to entry = %x", entry);
   ((void(*)())entry)();
 }

@@ -1,5 +1,6 @@
 #include <common.h>
 #include <fs.h>
+#include <device.h>
 #include "syscall.h"
 
 #ifndef CONFIG_STRACE
@@ -55,6 +56,15 @@ static void sys_brk(Context *c){
   c->GPRx = 0;
 }
 
+static void sys_gettimeofday(Context *c){
+  struct timeval *tv = (struct timeval*) c->GPR2;
+  // struct timezone *tz = (struct timezone*) c->GPR3;
+  uint64_t us = io_read(AM_TIMER_UPTIME).us;
+  tv->tv_sec = us / 1000000;
+  tv->tv_usec = us % 1000000;
+  c->GPRx = 0;
+}
+
 void do_syscall(Context *c) {
   uintptr_t a[4];
   a[0] = c->GPR1;
@@ -68,6 +78,7 @@ void do_syscall(Context *c) {
     SYS_CASE(close);
     SYS_CASE(lseek);
     SYS_CASE(brk);
+    SYS_CASE(gettimeofday);
     default: panic("Unhandled syscall ID = %d", a[0]);
   }
 }
