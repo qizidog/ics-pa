@@ -1,6 +1,7 @@
 #include <common.h>
 #include <fs.h>
 #include <device.h>
+#include <sys/time.h>
 #include "syscall.h"
 
 #ifndef CONFIG_STRACE

@@ -859,16 +859,73 @@ dhrystone, coremark, microbench 都是在实践中已经被广泛用于处理器
 
 `paddr_read`, `paddr_write` 是读写 nemu 内存的接口，其中 `handler` 通过 `init_xxx` 中的 `add_mmio_map` 提前注册到 `maps` 数组中。
 
+```text
+-> [paddr.c] word_t paddr_read(paddr_t addr, int len)
+-> [paddr.c] void paddr_write(paddr_t addr, int len, word_t data)
+-----> [mmio.c] word_t mmio_read(paddr_t addr, int len)
+-----> [mmio.c] void mmio_write(paddr_t addr, int len, word_t data)
+---------> [map.c] word_t map_read(paddr_t addr, int len, IOMap *map)
+---------> [map.c] void map_write(paddr_t addr, int len, word_t data, IOMap *map)
+-------------> [map.c] invoke_callback(map->callback, offset, len, false/true)  // map->callback(offset, len, is_write)
+
+// [mmio.c] add_mmio_map 注册示例
+void add_mmio_map(const char *name, paddr_t addr, void *space, uint32_t len, io_callback_t callback)
+-> add_mmio_map("keyboard", CONFIG_I8042_DATA_MMIO, i8042_data_port_base, 4, i8042_data_io_handler);
+-> add_mmio_map("serial", CONFIG_SERIAL_MMIO, serial_base, 8, serial_io_handler);
+```
+
 **am 中 handler 的调用逻辑: `io_read → ioe_read → lut[reg](buf) → inb/outb`**
 
 其中 `reg` 在 `amdev.h` 中通过 `AM_DEVREG` 定义（同时定义了 `AM_##reg` 和 `AM_##reg##_T`），`lut[reg]` 就是 `handler`，buf是 `AM_##reg##_T` 类型的结构体，`buf` 结构体的值由 `handler` 函数调用 `inb`, `outb` 等 API 控制修改，并且 `buf` 被作为 `io_read` 的结果返回。
 
-两种 handler 之间的联系：am 中的 handler 通过 in/out 读写内存数据，而实际上在 nemu 中内存的读写是通过 paddr_read/paddr_write 来实现的。
+```text
+-> [klib-macros.h] io_read(reg)
+-----> [ioe.c] ioe_read(int reg, void *buf) // lut[reg](buf)
+
+// [${AM_HOME}/am/src/platform/nemu/ioe/*]
+static void *lut[128] = {
+  [AM_TIMER_CONFIG] = __am_timer_config,
+  [AM_TIMER_RTC   ] = __am_timer_rtc,
+  [AM_TIMER_UPTIME] = __am_timer_uptime,
+  [AM_INPUT_CONFIG] = __am_input_config,
+  [AM_INPUT_KEYBRD] = __am_input_keybrd,
+  [AM_GPU_CONFIG  ] = __am_gpu_config,
+  [AM_GPU_FBDRAW  ] = __am_gpu_fbdraw,
+  [AM_GPU_STATUS  ] = __am_gpu_status,
+  [AM_UART_CONFIG ] = __am_uart_config,
+  [AM_AUDIO_CONFIG] = __am_audio_config,
+  [AM_AUDIO_CTRL  ] = __am_audio_ctrl,
+  [AM_AUDIO_STATUS] = __am_audio_status,
+  [AM_AUDIO_PLAY  ] = __am_audio_play,
+  [AM_DISK_CONFIG ] = __am_disk_config,
+  [AM_DISK_STATUS ] = __am_disk_status,
+  [AM_DISK_BLKIO  ] = __am_disk_blkio,
+  [AM_NET_CONFIG  ] = __am_net_config,
+};
+
+// [${AM_HOME}/am/src/platform/nemu/include/nemu.h]  // addr
+#define SERIAL_PORT     (DEVICE_BASE + 0x00003f8)
+#define KBD_ADDR        (DEVICE_BASE + 0x0000060)
+#define RTC_ADDR        (DEVICE_BASE + 0x0000048)
+#define VGACTL_ADDR     (DEVICE_BASE + 0x0000100)
+#define AUDIO_ADDR      (DEVICE_BASE + 0x0000200)
+#define DISK_ADDR       (DEVICE_BASE + 0x0000300)
+#define FB_ADDR         (MMIO_BASE   + 0x1000000)
+#define AUDIO_SBUF_ADDR (MMIO_BASE   + 0x1200000)
+
+---------> [riscv.h] inb(uintptr_t addr)/outb(uintptr_t addr, uint8_t  data)
+static inline uint8_t  inb(uintptr_t addr) { return *(volatile uint8_t  *)addr; }
+static inline void outb(uintptr_t addr, uint8_t  data) { *(volatile uint8_t  *)addr = data; }
+```
+
+两种 handler 之间的联系：am 中的 handler 通过 in/out 读写内存数据，而实际上在 nemu 中内存的读写是通过 paddr_read/paddr_write 来实现的。在每次 exec_once 结束后，都会调用 device_update 来更新屏幕和记录按键事件。
 
 对于要求实现的4个IOE，应该分类别地认识他们，
 
 - 输出（ioe_write）：serial, vga
 - 输入（ioe_read）：timer, keyboard
+
+不写笔记给自己埋坑：keyboard、vga测试脚本需要图形化界面！
 
 拓展阅读：[FreeVGA](https://www.scs.stanford.edu/10wi-cs140/pintos/specs/freevga/home.htm)
 

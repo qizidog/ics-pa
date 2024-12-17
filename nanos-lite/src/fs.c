@@ -1,5 +1,6 @@
 #include "debug.h"
 #include <fs.h>
+#include <device.h>
 #include <stdio.h>
 
 typedef size_t (*ReadFn) (void *buf, size_t offset, size_t len);
@@ -7,7 +8,6 @@ typedef size_t (*WriteFn) (const void *buf, size_t offset, size_t len);
 
 size_t ramdisk_read(void *buf, size_t offset, size_t len);
 size_t ramdisk_write(const void *buf, size_t offset, size_t len);
-size_t serial_write(const void *buf, size_t offset, size_t len);
 
 typedef struct {
   char *name;
@@ -36,6 +36,7 @@ static Finfo file_table[] __attribute__((used)) = {
   [FD_STDOUT] = {"stdout", 0, 0, invalid_read, serial_write},
   [FD_STDERR] = {"stderr", 0, 0, invalid_read, serial_write},
 #include "files.h"
+  {"/dev/events", 0, 0, events_read, invalid_write},
 };
 
 int fs_open(const char *pathname, int flags, int mode) {
@@ -44,8 +45,8 @@ int fs_open(const char *pathname, int flags, int mode) {
   for (int fd = 0; fd < LENGTH(file_table); fd++) {
     Finfo* f = &file_table[fd];
     if (strcmp(pathname, f->name) == 0) {
-      f->read = ramdisk_read;
-      f->write = ramdisk_write;
+      if (f->read == NULL) f->read = ramdisk_read;
+      if (f->write == NULL) f->write = ramdisk_write;
       return fd;
     }
   }

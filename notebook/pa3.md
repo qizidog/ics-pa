@@ -528,6 +528,15 @@ NDL_GetTicks 效果类似于 `SDL_GetTicks -- Get the number of milliseconds sin
 其实就是在NDL初始化时记录一个事件，在NDL_GetTicks中计算时间差，和nemu中计算程序运行时间同理。
 
 
+### NDL_PollEvent
+
+> - 实现events_read()(在nanos-lite/src/device.c中定义), 把事件写入到buf中, 最长写入len字节, 然后返回写入的实际长度. 其中按键名已经在字符串数组names中定义好了, 你需要借助IOE的API来获得设备的输入. 另外, 若当前没有有效按键, 则返回0即可.
+> - 在VFS中添加对/dev/events的支持.
+> - 在NDL中实现NDL_PollEvent(), 从/dev/events中读出事件并写入到buf中.
+
+需要图形化界面支持！
+
+借机回顾了一下pa2中IOE相关的内容。
 
 
 

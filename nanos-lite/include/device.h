@@ -3,13 +3,7 @@
 
 #include <common.h>
 
-struct timeval {
-  long tv_sec;       /* seconds */
-  long tv_usec; /* microseconds */
-};
-struct timezone {
-  int tz_minuteswest; /* minutes west of Greenwich */
-  int tz_dsttime;     /* type of DST correction */
-};
+size_t serial_write(const void *buf, size_t offset, size_t len);
+size_t events_read(void *buf, size_t offset, size_t len);
 
 #endif
