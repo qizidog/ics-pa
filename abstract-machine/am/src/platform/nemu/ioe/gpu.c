@@ -13,6 +13,7 @@ void __am_gpu_init() {
   /* outl(SYNC_ADDR, 1); */
 }
 
+// AM显示控制器信息, 可读出屏幕大小信息width和height
 void __am_gpu_config(AM_GPU_CONFIG_T *cfg) {
   uint32_t wh = inl(VGACTL_ADDR);
   *cfg = (AM_GPU_CONFIG_T) {
@@ -22,6 +23,8 @@ void __am_gpu_config(AM_GPU_CONFIG_T *cfg) {
   };
 }
 
+// AM帧缓冲控制器, 可写入绘图信息, 向屏幕(x, y)坐标处绘制w*h的矩形图像
+// x向右，y向下
 void __am_gpu_fbdraw(AM_GPU_FBDRAW_T *ctl) {
   if (ctl->sync) {
     outl(SYNC_ADDR, 1);
@@ -30,7 +33,7 @@ void __am_gpu_fbdraw(AM_GPU_FBDRAW_T *ctl) {
   int w = ctl->w, h = ctl->h;
   uint32_t * pixels = ctl->pixels;
 
-  uint32_t sw = inl(VGACTL_ADDR) >> 16;
+  uint32_t sw = inl(VGACTL_ADDR) >> 16; // screen width
   uint32_t *fb = (uint32_t *)(uintptr_t) FB_ADDR;  // force cast
 
   for (int j = y; j < y + h; j++) {

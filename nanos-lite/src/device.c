@@ -22,6 +22,7 @@ size_t serial_write(const void *buf, size_t offset, size_t len) {
 }
 
 size_t events_read(void *buf, size_t offset, size_t len) {
+  // /dev/events
   AM_INPUT_KEYBRD_T k = io_read(AM_INPUT_KEYBRD);
   // printf("keydown: %d, keycode: %d\n", k.keydown, k.keycode);
   if (k.keycode == AM_KEY_NONE) { ((char *) buf)[0] = '\0'; return 0; }
@@ -29,10 +30,22 @@ size_t events_read(void *buf, size_t offset, size_t len) {
 }
 
 size_t dispinfo_read(void *buf, size_t offset, size_t len) {
-  return 0;
+  // /proc/dispinfo
+  // 按照约定将文件的len字节写到buf中
+  AM_GPU_CONFIG_T gpu_cfg = io_read(AM_GPU_CONFIG);
+  return snprintf((char *)buf, len, "WIDTH: %d\nHEIGHT: %d", gpu_cfg.width, gpu_cfg.height);
 }
 
 size_t fb_write(const void *buf, size_t offset, size_t len) {
+  // /dev/fb
+  // 把buf中的len字节写到屏幕上offset处
+  offset /= sizeof(uint32_t);  // 字节转换为像素
+  len /= sizeof(uint32_t);  // 字节转换为像素
+
+  size_t sw = io_read(AM_GPU_CONFIG).width;
+  size_t x = offset % sw;
+  size_t y = offset / sw;
+  io_write(AM_GPU_FBDRAW, x, y, (void *)buf, len, 1, true);
   return 0;
 }
 

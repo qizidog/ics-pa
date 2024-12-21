@@ -539,4 +539,21 @@ NDL_GetTicks 效果类似于 `SDL_GetTicks -- Get the number of milliseconds sin
 借机回顾了一下pa2中IOE相关的内容。
 
 
+### NDL_VGA
+
+> 实现dispinfo_read()(在nanos-lite/src/device.c中定义), 按照约定将文件的len字节写到buf中(我们认为这个文件不支持lseek, 可忽略offset).
+> 在NDL中读出这个文件的内容, 从中解析出屏幕大小, 然后实现NDL_OpenCanvas()的功能. 目前NDL_OpenCanvas()只需要记录画布的大小就可以了, 当然我们要求画布大小不能超过屏幕大小.
+
+这里涉及到在 `disoinfo_read()` 中构建字符串，然后又在 `NUL_OpenCanvas()` 中解析字符串从而获取屏幕尺寸的需求。虽然做法很多余，但毕竟是题目要求，就只管实现吧。
+
+这里需要记录画布尺寸！注意区分屏幕尺寸和画布尺寸！
+
+> 在init_fs()(在nanos-lite/src/fs.c中定义)中对文件记录表中/dev/fb的大小进行初始化.
+> 实现fb_write()(在nanos-lite/src/device.c中定义), 用于把buf中的len字节写到屏幕上offset处. 你需要先从offset计算出屏幕上的坐标, 然后调用IOE来进行绘图. 另外我们约定每次绘图后总是马上将frame buffer中的内容同步到屏幕上.
+> 在NDL中实现NDL_DrawRect(), 通过往/dev/fb中的正确位置写入像素信息来绘制图像. 你需要梳理清楚系统屏幕(即frame buffer), NDL_OpenCanvas()打开的画布, 以及NDL_DrawRect()指示的绘制区域之间的位置关系.
+
+基于获得的屏幕尺寸和画布尺寸信息，可以将画布置于屏幕中心位置。注意 `write` 和 `lseek` 函数以byte为单位，`io_write(AM_GPU_FBDRAW, ...)` 以像素为单位。
+
+
+
 
