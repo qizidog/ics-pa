@@ -33,7 +33,7 @@ size_t dispinfo_read(void *buf, size_t offset, size_t len) {
   // /proc/dispinfo
   // 按照约定将文件的len字节写到buf中
   AM_GPU_CONFIG_T gpu_cfg = io_read(AM_GPU_CONFIG);
-  return snprintf((char *)buf, len, "WIDTH: %d\nHEIGHT: %d", gpu_cfg.width, gpu_cfg.height);
+  return snprintf((char *)buf, len, "WIDTH: %d\nHEIGHT: %d\n", gpu_cfg.width, gpu_cfg.height);
 }
 
 size_t fb_write(const void *buf, size_t offset, size_t len) {
